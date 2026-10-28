@@ -1,6 +1,6 @@
 Laboratorio Integrato
 
-Nome: 
+Nome: Vanguard
 
 TeamLead: Janice Brun
 
