@@ -1,1 +1,0 @@
-![alt text](vanguard.drawio-1.png)
