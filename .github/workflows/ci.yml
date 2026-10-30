@@ -1,0 +1,74 @@
+name: CI - validation and security
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality-and-security:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: "us-east-1"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        if: ${{ hashFiles('**/*.py') != '' || hashFiles('ansible/**/*.yml') != '' || hashFiles('ansible/**/*.yaml') != '' || hashFiles('**/*.yaml') != '' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Python lint
+        if: ${{ hashFiles('**/*.py') != '' }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8
+          flake8 .
+
+      - name: Setup Terraform
+        if: ${{ hashFiles('**/*.tf') != '' }}
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.9.2'
+
+      - name: Terraform format check
+        if: ${{ hashFiles('**/*.tf') != '' }}
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init (no backend)
+        if: ${{ hashFiles('**/*.tf') != '' }}
+        run: terraform init -backend=false
+
+      - name: Terraform validate
+        if: ${{ hashFiles('**/*.tf') != '' }}
+        run: terraform validate
+
+      - name: Terraform plan (simulation only)
+        if: ${{ hashFiles('**/*.tf') != '' }}
+        run: |
+          terraform plan -lock=false -input=false -refresh=true -out=tfplan.out
+
+      - name: Ansible lint
+        if: ${{ hashFiles('ansible/**/*.yml') != '' || hashFiles('ansible/**/*.yaml') != '' }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible ansible-lint
+          ansible-lint ansible
+
+      - name: Checkov security scan
+        if: ${{ hashFiles('**/*.tf') != '' || hashFiles('ansible/**/*.yml') != '' || hashFiles('ansible/**/*.yaml') != '' }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install checkov
+          if [ -d terraform ]; then checkov -d terraform --quiet; fi
+          if [ -d ansible ]; then checkov -d ansible --quiet; fi
+
+      - name: Placeholder status
+        if: ${{ hashFiles('**/*.tf') == '' && hashFiles('ansible/**/*.yml') == '' && hashFiles('ansible/**/*.yaml') == '' && hashFiles('**/*.py') == '' }}
+        run: |
+          echo "No IaC code is present yet. The pipeline is ready for Terraform and Ansible implementation."

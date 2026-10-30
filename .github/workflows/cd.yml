@@ -1,0 +1,120 @@
+name: CD - deploy or destroy infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Select the action to execute'
+        required: true
+        type: choice
+        default: apply
+        options:
+          - apply
+          - destroy
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        default: dev
+        options:
+          - dev
+          - prod
+      confirm_prod:
+        description: 'Type CONFIRM_PROD to enable production deployment'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  validate-inputs:
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCOUNT_ID_DEV: "PLACEHOLDER_AWS_ACCOUNT_ID_DEV"
+      AWS_ACCOUNT_ID_PROD: "PLACEHOLDER_AWS_ACCOUNT_ID_PROD"
+      CONFIRM_PROD: ${{ github.event.inputs.confirm_prod }}
+    steps:
+      - name: Validate target environment
+        shell: bash
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          ACTION="${{ github.event.inputs.action }}"
+
+          echo "Selected environment: ${ENV}"
+          echo "Selected action: ${ACTION}"
+
+          if [ "$ENV" = "prod" ]; then
+            echo "Production deployment is intentionally disabled for now."
+            echo "The account, role, and backend are still placeholders."
+            if [ -z "$AWS_ACCOUNT_ID_PROD" ] || [ "$CONFIRM_PROD" != "CONFIRM_PROD" ]; then
+              echo "Prod is not configured yet. Replace the placeholder account and confirm the prod deployment to enable it."
+              exit 1
+            fi
+          else
+            if [ -z "$AWS_ACCOUNT_ID_DEV" ]; then
+              echo "DEV account is still a placeholder. Replace the placeholder before running the workflow."
+              exit 1
+            fi
+          fi
+
+  deploy:
+    needs: validate-inputs
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+
+    env:
+      AWS_REGION: "us-east-1"
+      TF_VAR_environment: ${{ github.event.inputs.environment }}
+      TF_VAR_region: "us-east-1"
+      TF_STATE_BUCKET: "PLACEHOLDER_TF_STATE_BUCKET"
+      TF_STATE_LOCK_TABLE: "PLACEHOLDER_TF_STATE_LOCK_TABLE"
+      AWS_ACCOUNT_ID_DEV: "PLACEHOLDER_AWS_ACCOUNT_ID_DEV"
+      AWS_GITHUB_ACTIONS_ROLE_NAME: "PLACEHOLDER_GITHUB_ACTIONS_ROLE_NAME"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.9.2'
+
+      - name: Configure AWS credentials with GitHub OIDC (DEV only)
+        if: ${{ github.event.inputs.environment == 'dev' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID_DEV }}:role/${{ env.AWS_GITHUB_ACTIONS_ROLE_NAME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform init
+        if: ${{ github.event.inputs.environment == 'dev' }}
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ env.TF_STATE_BUCKET }}" \
+            -backend-config="key=terraform/${{ github.event.inputs.environment }}/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ env.TF_STATE_LOCK_TABLE }}" \
+            -backend-config="encrypt=true"
+
+      - name: Select Terraform workspace
+        if: ${{ github.event.inputs.environment == 'dev' }}
+        run: |
+          terraform workspace select ${{ github.event.inputs.environment }} || terraform workspace new ${{ github.event.inputs.environment }}
+
+      - name: Apply infrastructure
+        if: ${{ github.event.inputs.environment == 'dev' && github.event.inputs.action == 'apply' }}
+        run: terraform apply -auto-approve
+
+      - name: Destroy infrastructure
+        if: ${{ github.event.inputs.environment == 'dev' && github.event.inputs.action == 'destroy' }}
+        run: terraform destroy -auto-approve
+
+      - name: Production not available
+        if: ${{ github.event.inputs.environment == 'prod' }}
+        run: |
+          echo "Production deployment is intentionally disabled in this draft pipeline."
+          exit 1
