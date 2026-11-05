@@ -1,0 +1,6 @@
+bucket       = "its-lab-tfstate-CAMBIAMI-univoco"
+key          = "lab/terraform.tfstate"
+region       = "eu-south-1"
+encrypt      = true
+kms_key_id   = "arn:aws:kms:eu-south-1:111122223333:key/XXXXXXXX"
+use_lockfile = true
