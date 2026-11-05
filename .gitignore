@@ -1,0 +1,10 @@
+/istruzioni_ai
+
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+crash.log
+*.pem
+id_*
+!id_*.pub
