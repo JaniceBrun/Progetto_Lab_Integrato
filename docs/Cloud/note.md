@@ -36,3 +36,5 @@ Come funziona: Packer crea una VM temporanea, vi applica il playbook Ansible per
 Vantaggi: All'avvio la VM è già configurata al 100%. Nessun bisogno di connessioni SSH da CI/CD durante il terraform apply.
 
 -----------------------------------
+
+Valutare la creazione si AMI da vm già settate per ridurre tempi di launch
