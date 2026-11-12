@@ -67,7 +67,7 @@ variable "instance_sizing" {
   type = object({
     waf = optional(object({
       instance_type = optional(string, "t3.small")
-      volume_gb     = optional(number, 20)
+      volume_gb     = optional(number, 30)
     }), {})
     bastion = optional(object({
       instance_type = optional(string, "t3.micro")
@@ -79,7 +79,7 @@ variable "instance_sizing" {
     }), {})
     wazuh = optional(object({
       instance_type = optional(string, "t3.large")
-      volume_gb     = optional(number, 50)
+      volume_gb     = optional(number, 60)
     }), {})
   })
   default = {}
