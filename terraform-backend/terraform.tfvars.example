@@ -1,0 +1,6 @@
+aws_region             = "eu-south-1"
+project                = "its-lab"
+environment            = "lab"
+state_bucket_name      = "its-lab-tfstate-CAMBIAMI-univoco"
+state_key_prefix       = "lab"
+allowed_principal_arns = ["arn:aws:iam::111122223333:role/terraform-admin"]

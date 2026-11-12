@@ -1,1 +1,15 @@
 /istruzioni_ai
+
+
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
+*.pem
+id_*
+!id_*.pub
+
+terraform.tfvars
+*.auto.tfvars
+backend.hcl

@@ -1,0 +1,54 @@
+#!/bin/bash
+set -euxo pipefail
+exec > >(tee -a /var/log/bootstrap.log) 2>&1
+
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -y
+apt-get install -y git ansible
+
+mkdir -p /var/lib/ansible-pull
+
+# --- wrapper: sempre al primo giro, poi solo se il repo cambia ---
+cat > /usr/local/bin/ansible-pull-run.sh <<'EOF'
+#!/bin/bash
+set -u
+STAMP=/var/lib/ansible-pull/.converged
+OPTS=""
+[ -f "$STAMP" ] && OPTS="--only-if-changed"
+/usr/bin/ansible-pull \
+  -U "${repo_url}" -C "${repo_ref}" \
+  -d /var/lib/ansible-pull/repo \
+  -i localhost, $OPTS \
+  -e "vm_role=${vm_role} wazuh_manager_ip=${wazuh_ip}" \
+  ${playbook} && touch "$STAMP"
+EOF
+chmod 750 /usr/local/bin/ansible-pull-run.sh
+
+# --- servizio + timer ---
+cat > /etc/systemd/system/ansible-pull.service <<'EOF'
+[Unit]
+Description=ansible-pull (${vm_role})
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ansible-pull-run.sh
+TimeoutStartSec=3600
+EOF
+
+cat > /etc/systemd/system/ansible-pull.timer <<'EOF'
+[Unit]
+Description=ansible-pull periodico (${vm_role})
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30
+
+[Install]
+WantedBy=timers.target
+EOF
+
+systemctl daemon-reload
+systemctl enable --now ansible-pull.timer

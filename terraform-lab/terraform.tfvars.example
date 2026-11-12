@@ -1,0 +1,6 @@
+aws_region           = "eu-south-1"
+availability_zone    = "eu-south-1a"
+project              = "its-lab"
+environment          = "lab"
+team_ssh_cidrs       = ["203.0.113.10/32"]
+bootstrap_public_key = "ssh-ed25519 AAAA... chiave-pubblica"
