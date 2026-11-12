@@ -65,6 +65,7 @@ locals {
 
 # ---------------- Ingress da altri SG ----------------
 resource "aws_vpc_security_group_ingress_rule" "from_sg" {
+  #checkov:skip=CKV_AWS_24: This rule set uses SG-to-SG references, not 0.0.0.0/0 SSH.
   for_each = local.ingress_from_sg
 
   security_group_id            = local.sg_ids[each.value.sg]
@@ -77,6 +78,7 @@ resource "aws_vpc_security_group_ingress_rule" "from_sg" {
 
 # ---------------- Ingress da Internet (solo WAF) ----------------
 resource "aws_vpc_security_group_ingress_rule" "from_internet" {
+  #checkov:skip=CKV_AWS_260: HTTP/80 is intentionally exposed on the public WAF entrypoint for the lab scenario.
   for_each = local.ingress_from_internet
 
   security_group_id = local.sg_ids[each.value.sg]

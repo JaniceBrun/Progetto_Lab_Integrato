@@ -1,4 +1,5 @@
 resource "aws_vpc" "this" {
+  #checkov:skip=CKV2_AWS_11: Flow logs are configured by the dedicated vpc_flow_log module in the root stack.
   cidr_block           = var.cidr_block
   enable_dns_support   = true
   enable_dns_hostnames = true
