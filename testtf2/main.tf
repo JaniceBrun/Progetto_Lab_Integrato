@@ -80,6 +80,26 @@ locals {
     # echo "ssh-ed25519 AAAA...chiave-utente6" >> /home/ubuntu/.ssh/authorized_keys
   EOF
 
+  bastion_userdata = <<-EOF
+    #!/bin/bash
+    # --- Chiavi SSH aggiuntive ---
+    # Infrastruttura (janice.brun) - NON rimuovere
+    # echo "ssh-ed25519 AAAA...chiave-janice" >> /home/ubuntu/.ssh/authorized_keys
+    # Utente 1 (sara.progetto)
+    echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHYfUpoFu9qKnWWakZSRPCL7XOkrbiZZURXleIcc0yJw sara.progetto" >> /home/ubuntu/.ssh/authorized_keys
+    chmod 600 /home/ubuntu/.ssh/authorized_keys
+    # Utente 2 (nome.cognome)
+    # echo "ssh-ed25519 AAAA...chiave-utente2" >> /home/ubuntu/.ssh/authorized_keys
+    # Utente 3 (nome.cognome)
+    # echo "ssh-ed25519 AAAA...chiave-utente3" >> /home/ubuntu/.ssh/authorized_keys
+    # Utente 4 (nome.cognome)
+    # echo "ssh-ed25519 AAAA...chiave-utente4" >> /home/ubuntu/.ssh/authorized_keys
+    # Utente 5 (nome.cognome)
+    # echo "ssh-ed25519 AAAA...chiave-utente5" >> /home/ubuntu/.ssh/authorized_keys
+    # Utente 6 (nome.cognome)
+    # echo "ssh-ed25519 AAAA...chiave-utente6" >> /home/ubuntu/.ssh/authorized_keys
+  EOF
+
   juice_userdata = <<-EOF
     #!/bin/bash
     apt-get update -y
@@ -201,6 +221,7 @@ module "bastion" {
   key_name            = var.key_name
   lab_role_name       = var.lab_role_name
   associate_public_ip = true
+  user_data           = local.bastion_userdata
   tags                = local.tags
 }
 
