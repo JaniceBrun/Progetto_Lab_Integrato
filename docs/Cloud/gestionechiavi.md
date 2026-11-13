@@ -45,17 +45,20 @@ ssh -i ~/.ssh/id_ed25519 ubuntu@<ip_pubblico>
 ssh -i ~/.ssh/id_ed25519 -J ubuntu@<bastion_ip> ubuntu@<wazuh_private_ip>
 ```
 
-**Accesso da bastion - modificare ~/.ssh/config su pc con ip corretti
+**Accesso da bastion - modificare ~/.ssh/config su pc con ip corretti**
 Host bastion
-  HostName <bastion_ip>
-  User ubuntu
-  IdentityFile ~/percorso/miaokey.pem
+        HostName ip pubblico bastion
+        User ubuntu
+        IdentityFile C:\Users\janice.brun\Desktop\miaokey.pem
+        IdentitiesOnly yes
+        ForwardAgent yes
 
 Host wazuh
-  HostName <wazuh_private_ip>
-  User ubuntu
-  IdentityFile ~/percorso/miaokey.pem
-  ProxyJump bastion
+        HostName ip privato wazuh
+        User ubuntu
+        IdentityFile C:\Users\janice.brun\Desktop\miaokey.pem
+        IdentitiesOnly yes
+        ProxyJump bastion
 
 
 Gli IP vengono stampati da Terraform dopo ogni `apply`:
@@ -90,3 +93,8 @@ ssh ubuntu@<ip> "sed -i '/nome.cognome/d' /home/ubuntu/.ssh/authorized_keys"
 - Non condividere mai la chiave privata (file senza `.pub`)
 - Non committare chiavi private nella repo — il `.gitignore` esclude già `id_*` e `*.pem`
 - Usa sempre `-t ed25519`, è più sicuro e compatto di RSA
+
+
+# Utente 1 (janice)
+    echo "ssh-ed25519 AAAAesempiochiaveprova janice" >> /home/ubuntu/.ssh/authorized_keys
+    chmod 600 /home/ubuntu/.ssh/authorized_keys
