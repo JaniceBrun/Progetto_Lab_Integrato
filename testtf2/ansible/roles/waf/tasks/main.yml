@@ -1,0 +1,77 @@
+---
+- name: Installa nginx e ModSecurity
+  apt:
+    name:
+      - nginx
+      - libnginx-mod-security2
+      - git
+    state: present
+    update_cache: true
+
+- name: Clona OWASP CRS
+  git:
+    repo: https://github.com/coreruleset/coreruleset.git
+    dest: /etc/nginx/modsecurity-crs
+    version: main
+
+- name: Copia configurazione CRS
+  copy:
+    src: /etc/nginx/modsecurity-crs/crs-setup.conf.example
+    dest: /etc/nginx/modsecurity-crs/crs-setup.conf
+    remote_src: true
+
+- name: Copia configurazione ModSecurity
+  copy:
+    src: /usr/share/modsecurity-crs/modsecurity.conf-recommended
+    dest: /etc/modsecurity/modsecurity.conf
+    remote_src: true
+
+- name: Abilita SecRuleEngine
+  replace:
+    path: /etc/modsecurity/modsecurity.conf
+    regexp: 'SecRuleEngine DetectionOnly'
+    replace: 'SecRuleEngine On'
+
+- name: Configura nginx reverse proxy con ModSecurity
+  copy:
+    dest: /etc/nginx/sites-available/default
+    content: |
+      server {
+        listen 80;
+        modsecurity on;
+        modsecurity_rules_file /etc/modsecurity/modsecurity.conf;
+        location / {
+          proxy_pass http://localhost:3000;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+        }
+      }
+
+- name: Abilita e avvia nginx
+  systemd:
+    name: nginx
+    enabled: true
+    state: restarted
+
+- name: Aggiungi repo Wazuh
+  block:
+    - name: Importa chiave GPG Wazuh
+      shell: curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --dearmor -o /usr/share/keyrings/wazuh.gpg
+      args:
+        creates: /usr/share/keyrings/wazuh.gpg
+
+    - name: Aggiungi sorgente apt Wazuh
+      copy:
+        dest: /etc/apt/sources.list.d/wazuh.list
+        content: "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main"
+
+- name: Installa agente Wazuh
+  apt:
+    name: wazuh-agent
+    state: present
+    update_cache: true
+
+- name: Abilita agente Wazuh
+  systemd:
+    name: wazuh-agent
+    enabled: true

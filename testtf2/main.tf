@@ -10,42 +10,14 @@ locals {
 
   waf_userdata = <<-EOF
     #!/bin/bash
-    apt-get update -y
-    apt-get install -y nginx libnginx-mod-security2 git
-    # OWASP CRS
-    git clone https://github.com/coreruleset/coreruleset.git /etc/nginx/modsecurity-crs
-    cp /etc/nginx/modsecurity-crs/crs-setup.conf.example /etc/nginx/modsecurity-crs/crs-setup.conf
-    # Configurazione ModSecurity
-    cp /usr/share/modsecurity-crs/modsecurity.conf-recommended /etc/modsecurity/modsecurity.conf
-    sed -i 's/SecRuleEngine DetectionOnly/SecRuleEngine On/' /etc/modsecurity/modsecurity.conf
-    cat > /etc/nginx/sites-available/default <<'NGINX'
-    server {
-      listen 80;
-      modsecurity on;
-      modsecurity_rules_file /etc/modsecurity/modsecurity.conf;
-      location / {
-        proxy_pass http://localhost:3000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-      }
-    }
-    NGINX
-    systemctl enable nginx
-    systemctl restart nginx
-    # Wazuh agent
-    curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --dearmor -o /usr/share/keyrings/wazuh.gpg
-    echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main" > /etc/apt/sources.list.d/wazuh.list
-    apt-get update -y
-    apt-get install -y wazuh-agent
-    systemctl enable wazuh-agent
     # --- Chiavi SSH aggiuntive ---
     # Infrastruttura (janice.brun) - NON rimuovere
     # echo "ssh-ed25519 AAAA...chiave-janice" >> /home/ubuntu/.ssh/authorized_keys
     # Utente 1 (sara.progetto)
     echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHYfUpoFu9qKnWWakZSRPCL7XOkrbiZZURXleIcc0yJw sara.progetto" >> /home/ubuntu/.ssh/authorized_keys
     chmod 600 /home/ubuntu/.ssh/authorized_keys
-    # Utente 2 (nome.cognome)
-    # echo "ssh-ed25519 AAAA...chiave-utente2" >> /home/ubuntu/.ssh/authorized_keys
+    # Utente 2 (marco_progettolab)
+    echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIANI89MdEkKMcZYadmcCQ9YJEEAPXCb8+QjChd7d4GmP marco_progettolab" >> /home/ubuntu/.ssh/authorized_keys
     # Utente 3 (nome.cognome)
     # echo "ssh-ed25519 AAAA...chiave-utente3" >> /home/ubuntu/.ssh/authorized_keys
     # Utente 4 (nome.cognome)
@@ -54,24 +26,20 @@ locals {
     # echo "ssh-ed25519 AAAA...chiave-utente5" >> /home/ubuntu/.ssh/authorized_keys
     # Utente 6 (nome.cognome)
     # echo "ssh-ed25519 AAAA...chiave-utente6" >> /home/ubuntu/.ssh/authorized_keys
+    apt-get update -y
+    apt-get install -y ansible git
   EOF
 
   wazuh_userdata = <<-EOF
     #!/bin/bash
-    echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHYfUpoFu9qKnWWakZSRPCL7XOkrbiZZURXleIcc0yJw sara.progetto" >> /home/ubuntu/.ssh/authorized_keys
-    echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIANI89MdEkKMcZYadmcCQ9YJEEAPXCb8+QjChd7d4GmP marco_progettolab" >> /home/ubuntu/ .ssh/authorized_keys
-    chmod 600 /home/ubuntu/.ssh/authorized_keys
-    apt-get update -y
-    apt-get install -y curl
-    curl -sO https://packages.wazuh.com/4.11/wazuh-install.sh
-    bash wazuh-install.sh -a -i
     # --- Chiavi SSH aggiuntive ---
     # Infrastruttura (janice.brun) - NON rimuovere
     # echo "ssh-ed25519 AAAA...chiave-janice" >> /home/ubuntu/.ssh/authorized_keys
     # Utente 1 (sara.progetto)
-
-    # Utente 2 (nome.cognome)
-    # echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIANI89MdEkKMcZYadmcCQ9YJEEAPXCb8+QjChd7d4GmP marco_progettolab" >> /home/ubuntu/.ssh/authorized_keys
+    echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHYfUpoFu9qKnWWakZSRPCL7XOkrbiZZURXleIcc0yJw sara.progetto" >> /home/ubuntu/.ssh/authorized_keys
+    chmod 600 /home/ubuntu/.ssh/authorized_keys
+    # Utente 2 (marco_progettolab)
+    echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIANI89MdEkKMcZYadmcCQ9YJEEAPXCb8+QjChd7d4GmP marco_progettolab" >> /home/ubuntu/.ssh/authorized_keys
     # Utente 3 (nome.cognome)
     # echo "ssh-ed25519 AAAA...chiave-utente3" >> /home/ubuntu/.ssh/authorized_keys
     # Utente 4 (nome.cognome)
@@ -80,6 +48,8 @@ locals {
     # echo "ssh-ed25519 AAAA...chiave-utente5" >> /home/ubuntu/.ssh/authorized_keys
     # Utente 6 (nome.cognome)
     # echo "ssh-ed25519 AAAA...chiave-utente6" >> /home/ubuntu/.ssh/authorized_keys
+    apt-get update -y
+    apt-get install -y ansible git
   EOF
 
   bastion_userdata = <<-EOF
@@ -90,8 +60,8 @@ locals {
     # Utente 1 (sara.progetto)
     echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHYfUpoFu9qKnWWakZSRPCL7XOkrbiZZURXleIcc0yJw sara.progetto" >> /home/ubuntu/.ssh/authorized_keys
     chmod 600 /home/ubuntu/.ssh/authorized_keys
-    # Utente 2 (nome.cognome)
-    # echo "ssh-ed25519 AAAA...chiave-utente2" >> /home/ubuntu/.ssh/authorized_keys
+    # Utente 2 (marco_progettolab)
+    echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIANI89MdEkKMcZYadmcCQ9YJEEAPXCb8+QjChd7d4GmP marco_progettolab" >> /home/ubuntu/.ssh/authorized_keys
     # Utente 3 (nome.cognome)
     # echo "ssh-ed25519 AAAA...chiave-utente3" >> /home/ubuntu/.ssh/authorized_keys
     # Utente 4 (nome.cognome)
@@ -100,39 +70,20 @@ locals {
     # echo "ssh-ed25519 AAAA...chiave-utente5" >> /home/ubuntu/.ssh/authorized_keys
     # Utente 6 (nome.cognome)
     # echo "ssh-ed25519 AAAA...chiave-utente6" >> /home/ubuntu/.ssh/authorized_keys
+    apt-get update -y
+    apt-get install -y ansible git
   EOF
 
   juice_userdata = <<-EOF
     #!/bin/bash
-    apt-get update -y
-    apt-get install -y docker.io nginx
-    systemctl enable docker
-    systemctl start docker
-    docker run -d \
-      --name juice-shop \
-      --restart unless-stopped \
-      -p 3000:3000 \
-      bkimminich/juice-shop
-    cat > /etc/nginx/sites-available/default <<'NGINX'
-    server {
-      listen 80;
-      location / {
-        proxy_pass http://localhost:3000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-      }
-    }
-    NGINX
-    systemctl enable nginx
-    systemctl restart nginx
     # --- Chiavi SSH aggiuntive ---
     # Infrastruttura (janice.brun) - NON rimuovere
     # echo "ssh-ed25519 AAAA...chiave-janice" >> /home/ubuntu/.ssh/authorized_keys
     # Utente 1 (sara.progetto)
     echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHYfUpoFu9qKnWWakZSRPCL7XOkrbiZZURXleIcc0yJw sara.progetto" >> /home/ubuntu/.ssh/authorized_keys
     chmod 600 /home/ubuntu/.ssh/authorized_keys
-    # Utente 2 (nome.cognome)
-    # echo "ssh-ed25519 AAAA...chiave-utente2" >> /home/ubuntu/.ssh/authorized_keys
+    # Utente 2 (marco_progettolab)
+    echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIANI89MdEkKMcZYadmcCQ9YJEEAPXCb8+QjChd7d4GmP marco_progettolab" >> /home/ubuntu/.ssh/authorized_keys
     # Utente 3 (nome.cognome)
     # echo "ssh-ed25519 AAAA...chiave-utente3" >> /home/ubuntu/.ssh/authorized_keys
     # Utente 4 (nome.cognome)
@@ -141,6 +92,8 @@ locals {
     # echo "ssh-ed25519 AAAA...chiave-utente5" >> /home/ubuntu/.ssh/authorized_keys
     # Utente 6 (nome.cognome)
     # echo "ssh-ed25519 AAAA...chiave-utente6" >> /home/ubuntu/.ssh/authorized_keys
+    apt-get update -y
+    apt-get install -y ansible git
   EOF
 }
 

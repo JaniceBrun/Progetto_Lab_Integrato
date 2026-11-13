@@ -1,0 +1,17 @@
+---
+- name: Installa curl
+  apt:
+    name: curl
+    state: present
+    update_cache: true
+
+- name: Scarica script di installazione Wazuh
+  get_url:
+    url: https://packages.wazuh.com/4.11/wazuh-install.sh
+    dest: /tmp/wazuh-install.sh
+    mode: "0755"
+
+- name: Esegui installazione Wazuh all-in-one
+  command: bash /tmp/wazuh-install.sh -a -i
+  args:
+    creates: /var/ossec/bin/wazuh-control

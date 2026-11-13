@@ -1,0 +1,6 @@
+---
+- name: Configura WAF
+  hosts: localhost
+  become: true
+  roles:
+    - waf

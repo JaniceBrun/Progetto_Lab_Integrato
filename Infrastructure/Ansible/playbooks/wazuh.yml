@@ -1,0 +1,6 @@
+---
+- name: Configura Wazuh all-in-one
+  hosts: localhost
+  become: true
+  roles:
+    - wazuh

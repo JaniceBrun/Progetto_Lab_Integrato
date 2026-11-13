@@ -1,0 +1,6 @@
+---
+- name: Configura Juice Shop
+  hosts: localhost
+  become: true
+  roles:
+    - juice

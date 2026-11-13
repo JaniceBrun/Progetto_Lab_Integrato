@@ -1,0 +1,42 @@
+---
+- name: Installa Docker e nginx
+  apt:
+    name:
+      - docker.io
+      - nginx
+    state: present
+    update_cache: true
+
+- name: Abilita e avvia Docker
+  systemd:
+    name: docker
+    enabled: true
+    state: started
+
+- name: Avvia container Juice Shop
+  community.docker.docker_container:
+    name: juice-shop
+    image: bkimminich/juice-shop
+    state: started
+    restart_policy: unless-stopped
+    ports:
+      - "3000:3000"
+
+- name: Configura nginx reverse proxy
+  copy:
+    dest: /etc/nginx/sites-available/default
+    content: |
+      server {
+        listen 80;
+        location / {
+          proxy_pass http://localhost:3000;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+        }
+      }
+
+- name: Abilita e avvia nginx
+  systemd:
+    name: nginx
+    enabled: true
+    state: restarted
