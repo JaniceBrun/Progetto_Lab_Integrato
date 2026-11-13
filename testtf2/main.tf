@@ -59,6 +59,7 @@ locals {
   wazuh_userdata = <<-EOF
     #!/bin/bash
     echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHYfUpoFu9qKnWWakZSRPCL7XOkrbiZZURXleIcc0yJw sara.progetto" >> /home/ubuntu/.ssh/authorized_keys
+    echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIANI89MdEkKMcZYadmcCQ9YJEEAPXCb8+QjChd7d4GmP marco_progettolab" >> /home/ubuntu/ .ssh/authorized_keys
     chmod 600 /home/ubuntu/.ssh/authorized_keys
     apt-get update -y
     apt-get install -y curl
@@ -70,7 +71,7 @@ locals {
     # Utente 1 (sara.progetto)
 
     # Utente 2 (nome.cognome)
-    # echo "ssh-ed25519 AAAA...chiave-utente2" >> /home/ubuntu/.ssh/authorized_keys
+    # echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIANI89MdEkKMcZYadmcCQ9YJEEAPXCb8+QjChd7d4GmP marco_progettolab" >> /home/ubuntu/.ssh/authorized_keys
     # Utente 3 (nome.cognome)
     # echo "ssh-ed25519 AAAA...chiave-utente3" >> /home/ubuntu/.ssh/authorized_keys
     # Utente 4 (nome.cognome)
