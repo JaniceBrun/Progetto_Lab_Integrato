@@ -41,8 +41,9 @@ locals {
     # --- Chiavi SSH aggiuntive ---
     # Infrastruttura (janice.brun) - NON rimuovere
     # echo "ssh-ed25519 AAAA...chiave-janice" >> /home/ubuntu/.ssh/authorized_keys
-    # Utente 1 (nome.cognome)
-    # echo "ssh-ed25519 AAAA...chiave-utente1" >> /home/ubuntu/.ssh/authorized_keys
+    # Utente 1 (sara.progetto)
+    echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHYfUpoFu9qKnWWakZSRPCL7XOkrbiZZURXleIcc0yJw sara.progetto" >> /home/ubuntu/.ssh/authorized_keys
+    chmod 600 /home/ubuntu/.ssh/authorized_keys
     # Utente 2 (nome.cognome)
     # echo "ssh-ed25519 AAAA...chiave-utente2" >> /home/ubuntu/.ssh/authorized_keys
     # Utente 3 (nome.cognome)
@@ -64,8 +65,9 @@ locals {
     # --- Chiavi SSH aggiuntive ---
     # Infrastruttura (janice.brun) - NON rimuovere
     # echo "ssh-ed25519 AAAA...chiave-janice" >> /home/ubuntu/.ssh/authorized_keys
-    # Utente 1 (nome.cognome)
-    # echo "ssh-ed25519 AAAA...chiave-utente1" >> /home/ubuntu/.ssh/authorized_keys
+    # Utente 1 (sara.progetto)
+    echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHYfUpoFu9qKnWWakZSRPCL7XOkrbiZZURXleIcc0yJw sara.progetto" >> /home/ubuntu/.ssh/authorized_keys
+    chmod 600 /home/ubuntu/.ssh/authorized_keys
     # Utente 2 (nome.cognome)
     # echo "ssh-ed25519 AAAA...chiave-utente2" >> /home/ubuntu/.ssh/authorized_keys
     # Utente 3 (nome.cognome)
@@ -104,8 +106,9 @@ locals {
     # --- Chiavi SSH aggiuntive ---
     # Infrastruttura (janice.brun) - NON rimuovere
     # echo "ssh-ed25519 AAAA...chiave-janice" >> /home/ubuntu/.ssh/authorized_keys
-    # Utente 1 (nome.cognome)
-    # echo "ssh-ed25519 AAAA...chiave-utente1" >> /home/ubuntu/.ssh/authorized_keys
+    # Utente 1 (sara.progetto)
+    echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHYfUpoFu9qKnWWakZSRPCL7XOkrbiZZURXleIcc0yJw sara.progetto" >> /home/ubuntu/.ssh/authorized_keys
+    chmod 600 /home/ubuntu/.ssh/authorized_keys
     # Utente 2 (nome.cognome)
     # echo "ssh-ed25519 AAAA...chiave-utente2" >> /home/ubuntu/.ssh/authorized_keys
     # Utente 3 (nome.cognome)
