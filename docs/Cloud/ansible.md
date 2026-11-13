@@ -195,3 +195,12 @@ curl -s http://localhost | head -5
 ### Nota
 
 Il `user_data` gira solo al primo avvio. Se fai `terraform apply` su una VM già esistente senza distruggerla, nginx non viene installato automaticamente — devi farlo a mano o tramite un playbook Ansible.
+
+
+### comandi config iniziale test
+
+- ansible-pull -U https://github.com/JaniceBrun/Progetto_Lab_Integrato.git -C main testtf2/ansible/playbooks/wazuh.yml
+
+- ansible-pull -U https://github.com/JaniceBrun/Progetto_Lab_Integrato.git -C main testtf2/ansible/playbooks/waf.yml
+
+- ansible-pull -U https://github.com/JaniceBrun/Progetto_Lab_Integrato.git -C main testtf2/ansible/playbooks/juice.yml
