@@ -20,58 +20,28 @@
     dest: /etc/nginx/modsecurity-crs/crs-setup.conf
     remote_src: true
 
-- name: Copia configurazione ModSecurity
-  copy:
-    src: /usr/share/modsecurity-crs/modsecurity.conf-recommended
+- name: Crea directory modsecurity se non esiste
+  file:
+    path: /etc/modsecurity
+    state: directory
+    mode: "0755"
+
+- name: Deploy modsecurity.conf da template
+  template:
+    src: modsecurity.conf.j2
     dest: /etc/modsecurity/modsecurity.conf
-    remote_src: true
 
-- name: Abilita SecRuleEngine
-  replace:
-    path: /etc/modsecurity/modsecurity.conf
-    regexp: 'SecRuleEngine DetectionOnly'
-    replace: 'SecRuleEngine On'
-
-- name: Configura nginx reverse proxy con ModSecurity
-  copy:
+- name: Deploy nginx vhost da template
+  template:
+    src: nginx.conf.j2
     dest: /etc/nginx/sites-available/default
-    content: |
-      server {
-        listen 80;
-        modsecurity on;
-        modsecurity_rules_file /etc/modsecurity/modsecurity.conf;
-        location / {
-          proxy_pass http://localhost:3000;
-          proxy_set_header Host $host;
-          proxy_set_header X-Real-IP $remote_addr;
-        }
-      }
+
+- name: Verifica configurazione nginx
+  command: nginx -t
+  changed_when: false
 
 - name: Abilita e avvia nginx
   systemd:
     name: nginx
     enabled: true
     state: restarted
-
-- name: Aggiungi repo Wazuh
-  block:
-    - name: Importa chiave GPG Wazuh
-      shell: curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --dearmor -o /usr/share/keyrings/wazuh.gpg
-      args:
-        creates: /usr/share/keyrings/wazuh.gpg
-
-    - name: Aggiungi sorgente apt Wazuh
-      copy:
-        dest: /etc/apt/sources.list.d/wazuh.list
-        content: "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main"
-
-- name: Installa agente Wazuh
-  apt:
-    name: wazuh-agent
-    state: present
-    update_cache: true
-
-- name: Abilita agente Wazuh
-  systemd:
-    name: wazuh-agent
-    enabled: true

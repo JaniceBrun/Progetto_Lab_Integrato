@@ -204,3 +204,8 @@ Il `user_data` gira solo al primo avvio. Se fai `terraform apply` su una VM già
 - ansible-pull -U https://github.com/JaniceBrun/Progetto_Lab_Integrato.git -C main testtf2/ansible/playbooks/waf.yml
 
 - ansible-pull -U https://github.com/JaniceBrun/Progetto_Lab_Integrato.git -C main testtf2/ansible/playbooks/juice.yml
+
+
+cd testtf2/ansible
+ansible-playbook site.yml
+

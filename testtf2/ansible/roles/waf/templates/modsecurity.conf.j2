@@ -1,0 +1,13 @@
+SecRuleEngine {{ modsec_engine }}
+SecRequestBodyAccess On
+SecResponseBodyAccess Off
+SecRequestBodyLimit 13107200
+SecRequestBodyNoFilesLimit 131072
+SecPcreMatchLimit 1000
+SecPcreMatchLimitRecursion 1000
+SecDebugLogLevel 0
+SecAuditEngine RelevantOnly
+SecAuditLogRelevantStatus "^(?:5|4(?!04))"
+SecAuditLogParts ABIJDEFHZ
+SecAuditLogType Serial
+SecAuditLog /var/log/modsec_audit.log

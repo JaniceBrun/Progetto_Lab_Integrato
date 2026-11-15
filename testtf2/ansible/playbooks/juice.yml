@@ -1,6 +1,7 @@
 ---
 - name: Configura Juice Shop
-  hosts: localhost
+  hosts: juice
   become: true
   roles:
     - juice
+    - wazuh_agent

@@ -200,3 +200,57 @@ resource "aws_eip" "bastion" {
   depends_on = [module.network]
   tags       = merge(local.tags, { Name = "${local.name_prefix}-bastion-eip" })
 }
+
+resource "null_resource" "ansible_inventory" {
+  triggers = {
+    bastion_ip  = aws_eip.bastion.public_ip
+    waf_ip      = aws_eip.waf.public_ip
+    juice_ip    = aws_eip.juice.public_ip
+    wazuh_ip    = module.wazuh.private_ip
+  }
+
+  provisioner "local-exec" {
+    command = <<-CMD
+      echo "# Generato automaticamente da terraform apply" > ${path.module}/ansible/inventory/hosts.ini
+      echo "# NON modificare manualmente" >> ${path.module}/ansible/inventory/hosts.ini
+      echo "" >> ${path.module}/ansible/inventory/hosts.ini
+      echo "[wazuh]" >> ${path.module}/ansible/inventory/hosts.ini
+      echo "wazuh ansible_host=${module.wazuh.private_ip}" >> ${path.module}/ansible/inventory/hosts.ini
+      echo "" >> ${path.module}/ansible/inventory/hosts.ini
+      echo "[waf]" >> ${path.module}/ansible/inventory/hosts.ini
+      echo "waf ansible_host=${aws_eip.waf.public_ip}" >> ${path.module}/ansible/inventory/hosts.ini
+      echo "" >> ${path.module}/ansible/inventory/hosts.ini
+      echo "[juice]" >> ${path.module}/ansible/inventory/hosts.ini
+      echo "juice ansible_host=${aws_eip.juice.public_ip}" >> ${path.module}/ansible/inventory/hosts.ini
+      echo "" >> ${path.module}/ansible/inventory/hosts.ini
+      echo "[waf:vars]" >> ${path.module}/ansible/inventory/hosts.ini
+      echo "ansible_ssh_common_args='-o ProxyJump=ubuntu@${aws_eip.bastion.public_ip}'" >> ${path.module}/ansible/inventory/hosts.ini
+      echo "" >> ${path.module}/ansible/inventory/hosts.ini
+      echo "[wazuh:vars]" >> ${path.module}/ansible/inventory/hosts.ini
+      echo "ansible_ssh_common_args='-o ProxyJump=ubuntu@${aws_eip.bastion.public_ip}'" >> ${path.module}/ansible/inventory/hosts.ini
+    CMD
+  }
+
+  provisioner "local-exec" {
+    command = <<-CMD
+      echo "# Generato automaticamente da terraform apply" > ${path.module}/ansible/group_vars/all.yml
+      echo "# NON modificare manualmente" >> ${path.module}/ansible/group_vars/all.yml
+      echo "" >> ${path.module}/ansible/group_vars/all.yml
+      echo "wazuh_version: \"4.11\"" >> ${path.module}/ansible/group_vars/all.yml
+      echo "wazuh_agent_version: \"4.11.0-1\"" >> ${path.module}/ansible/group_vars/all.yml
+      echo "" >> ${path.module}/ansible/group_vars/all.yml
+      echo "juiceshop_ip: \"${module.juice.private_ip}\"" >> ${path.module}/ansible/group_vars/all.yml
+      echo "wazuh_manager_ip: \"${module.wazuh.private_ip}\"" >> ${path.module}/ansible/group_vars/all.yml
+      echo "" >> ${path.module}/ansible/group_vars/all.yml
+      echo "modsec_engine: \"On\"" >> ${path.module}/ansible/group_vars/all.yml
+    CMD
+  }
+
+  depends_on = [
+    aws_eip.bastion,
+    aws_eip.waf,
+    aws_eip.juice,
+    module.wazuh,
+    module.juice,
+  ]
+}

@@ -1,0 +1,6 @@
+---
+# Ordine: common su tutte → wazuh manager → waf → juice
+- import_playbook: playbooks/common.yml
+- import_playbook: playbooks/wazuh.yml
+- import_playbook: playbooks/waf.yml
+- import_playbook: playbooks/juice.yml

@@ -15,3 +15,6 @@ terraform.tfvars
 backend.hcl
 .terraform/
 
+# Generati automaticamente da terraform apply
+testtf2/ansible/inventory/hosts.ini
+testtf2/ansible/group_vars/all.yml

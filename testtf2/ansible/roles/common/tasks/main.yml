@@ -1,0 +1,34 @@
+---
+- name: Aggiorna pacchetti
+  apt:
+    upgrade: safe
+    update_cache: true
+
+- name: Installa unattended-upgrades
+  apt:
+    name: unattended-upgrades
+    state: present
+
+- name: Abilita unattended-upgrades
+  copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+
+- name: Hardening SSH - disabilita password auth
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PasswordAuthentication'
+    line: 'PasswordAuthentication no'
+
+- name: Hardening SSH - disabilita root login
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PermitRootLogin'
+    line: 'PermitRootLogin no'
+
+- name: Riavvia SSH
+  systemd:
+    name: ssh
+    state: restarted

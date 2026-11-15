@@ -7,7 +7,7 @@
 
 - name: Scarica script di installazione Wazuh
   get_url:
-    url: https://packages.wazuh.com/4.11/wazuh-install.sh
+    url: "https://packages.wazuh.com/{{ wazuh_version }}/wazuh-install.sh"
     dest: /tmp/wazuh-install.sh
     mode: "0755"
 

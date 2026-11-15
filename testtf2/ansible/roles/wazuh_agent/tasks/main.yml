@@ -1,0 +1,24 @@
+---
+- name: Importa chiave GPG Wazuh
+  shell: curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --dearmor -o /usr/share/keyrings/wazuh.gpg
+  args:
+    creates: /usr/share/keyrings/wazuh.gpg
+
+- name: Aggiungi sorgente apt Wazuh
+  copy:
+    dest: /etc/apt/sources.list.d/wazuh.list
+    content: "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main"
+
+- name: Installa agente Wazuh (versione fissata)
+  apt:
+    name: "wazuh-agent={{ wazuh_agent_version }}"
+    state: present
+    update_cache: true
+  environment:
+    WAZUH_MANAGER: "{{ wazuh_manager_ip }}"
+
+- name: Abilita e avvia agente Wazuh
+  systemd:
+    name: wazuh-agent
+    enabled: true
+    state: started

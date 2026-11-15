@@ -1,6 +1,7 @@
 ---
 - name: Configura WAF
-  hosts: localhost
+  hosts: waf
   become: true
   roles:
     - waf
+    - wazuh_agent
