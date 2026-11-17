@@ -32,7 +32,7 @@ Il punto 1 è il più efficace: elimina insieme le due voci che restano a pagame
 - Aggiungere un tag `Owner` o `Team` per distinguere i costi tra team cloud e cyber.
 
 ### 4. Cose da **non** fare per questo progetto
-- **Savings Plans / Reserved Instances:** richiedono impegno di 1 o 3 anni; il progetto dura poche settimane. Per riferimento il Calculator mostra per `t3.small` 10,15 USD/mese (Compute SP 3 anni) contro 17,52 On-Demand.
+- **Savings Plans / Reserved Instances insieme allo spegnimento:** l'impegno si paga 24x7 anche a istanze spente. Un EC2 Instance Savings Plan a 3 anni conviene solo se l'ambiente resta acceso 24x7 per tutto il periodo (risparmio fino a 2.557 USD su 3 anni, dettagli in [costo-3-anni.md](costo-3-anni.md)); distruggere lo stack fuori orario fa risparmiare di più (4.544 USD su 3 anni) senza impegno.
 - **Spot:** le VM non sono tolleranti alle interruzioni (Wazuh e WAF perderebbero stato durante le demo).
 - **Ridurre `t3.large` di Wazuh:** il requisito minimo dell'all-in-one Wazuh è 4 vCPU / 8 GB secondo la documentazione Wazuh; scendere a `t3.medium` (4 GB) rischia instabilità. Da valutare solo dopo aver misurato l'uso reale.
 - **Passare a Graviton (`t4g`)**: costa meno ma cambia architettura CPU (AMI arm64, compatibilità di immagini e pacchetti), quindi esce dal perimetro di questa analisi.

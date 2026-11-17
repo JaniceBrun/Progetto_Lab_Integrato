@@ -21,6 +21,8 @@ Data analisi: 17 novembre 2026 · Regione: **eu-south-1 (Europa – Milano)** ·
 | Dev/test: stack `Mainterraform` distrutto fuori orario (220 h/mese) | 65,09 USD | 781,07 USD |
 | Solo sessioni di laboratorio: stack distrutto (80 h/mese) | 30,44 USD | 365,28 USD |
 
+Su 3 anni (vedi [costo-3-anni.md](costo-3-anni.md)): **6.887,16 USD** On-Demand 24x7; **4.330,26 USD** con EC2 Instance Savings Plan 3 anni ad anticipo totale (−37%); **2.343,24 USD** distruggendo lo stack fuori orario (−66%).
+
 Costo medio orario dello scenario base: circa **0,26 USD/h**.
 
 Costo di logging e monitoraggio già previsto dal codice (scenario medio): **11,42 USD/mese**
@@ -42,6 +44,7 @@ Prime 3 voci di costo: EC2 Wazuh `t3.large` (77,57 USD, 41%), NAT Gateway (37,50
 | [aws-pricing-calculator.md](aws-pricing-calculator.md) | Parametri inseriti nel Calculator, prezzi unitari, procedura per riprodurre la stima |
 | [cost-breakdown.md](cost-breakdown.md) | Tabella costi per servizio (orario, mensile, annuale) e confronto 24x7 vs dev/test |
 | [logging-monitoring.md](logging-monitoring.md) | CloudWatch Logs, metriche, allarmi, CloudTrail: scenari basso/medio/alto |
+| [costo-3-anni.md](costo-3-anni.md) | Costo su 36 mesi, Savings Plans 1 e 3 anni, confronto con gli orari dev/test |
 | [optimization-recommendations.md](optimization-recommendations.md) | Opportunità di risparmio senza modificare l'architettura |
 
 ## Limiti principali

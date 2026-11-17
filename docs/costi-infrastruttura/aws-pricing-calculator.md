@@ -13,6 +13,7 @@
 | [screenshots/01-riepilogo-stima.jpg](screenshots/01-riepilogo-stima.jpg) | Riepilogo: costo mensile e totale 12 mesi |
 | [screenshots/02-dettaglio-servizi-1.jpg](screenshots/02-dettaglio-servizi-1.jpg) | Voci EC2, VPC, CloudWatch, KMS |
 | [screenshots/03-dettaglio-servizi-2.jpg](screenshots/03-dettaglio-servizi-2.jpg) | Voci VPC, CloudWatch, KMS, S3 |
+| [screenshots/04-savings-plans-t3large.jpg](screenshots/04-savings-plans-t3large.jpg) | Opzioni Savings Plans 1/3 anni per `t3.large` (usate in `costo-3-anni.md`) |
 
 ## Voci inserite e parametri
 
