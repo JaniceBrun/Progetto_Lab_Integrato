@@ -9,7 +9,7 @@ Obiettivo: ridurre il costo **senza cambiare l'architettura** (stesse 4 VM, stes
 | 1 | Ricreare lo stack `Mainterraform` solo durante le sessioni (`terraform apply` all'inizio, `terraform destroy` alla fine), lasciando sempre attivo `Backendtf` | da 126 USD/mese (220 h) a 161 USD/mese (80 h) | basso: c'è già il workflow CD con `apply`/`destroy` | No |
 | 2 | Se lo stack deve restare in piedi: fermare le 4 EC2 fuori orario (10 h x 22 giorni) | 85 USD/mese | basso: AWS Instance Scheduler, cron o workflow GitHub | No |
 | 3 | Configurare **AWS Budgets** con soglia mensile (es. 100 USD) e avvisi al 50/80/100% | evita sorprese | molto basso, i primi 2 budget sono gratuiti | No |
-| 4 | Usare il **piano gratuito / crediti** AWS Educate o Academy dell'ITS, se disponibili | fino a ~6 USD/mese di uscita dati, KMS e log, più eventuali crediti | basso | No |
+| 4 | Usare il **piano gratuito / crediti**  se disponibili | fino a ~6 USD/mese di uscita dati, KMS e log, più eventuali crediti | basso | No |
 | 5 | Ridurre i Flow Logs nello scenario alto: `traffic_type = "REJECT"` invece di `ALL` durante le campagne di attacco | fino a ~12 USD/mese | basso | No (stessa risorsa, filtro diverso) |
 | 6 | Monitoraggio dettagliato solo su `waf` e `wazuh` | 4,20 USD/mese | basso | No, ma va annotato lo skip di Checkov `CKV_AWS_126` |
 
