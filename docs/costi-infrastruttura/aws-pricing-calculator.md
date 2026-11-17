@@ -1,6 +1,7 @@
 # Stima con AWS Pricing Calculator
 
-- **Strumento:** AWS Pricing Calculator ufficiale, https://calculator.aws/, usato tramite browser (Claude in Chrome) il 17/11/2026.
+- **Strumento:** AWS Pricing Calculator ufficiale, https://calculator.aws/,
+-  il 17/11/2026.
 - **Link pubblico della stima:** https://calculator.aws/#/estimate?id=ef836fcf0185d05366126fc600b21a586f6a0ee7
 - **Nome stima:** *Vanguard Lab Integrato - eu-south-1 (24x7 on-demand)*
 - **Regione impostata in ogni voce:** Europa (Milano), `eu-south-1`
