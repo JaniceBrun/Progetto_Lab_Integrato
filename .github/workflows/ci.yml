@@ -34,24 +34,25 @@ jobs:
         if: ${{ hashFiles('**/*.tf') != '' }}
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: '1.9.2'
+          terraform_version: '1.10.5'
 
+      # Solo il codice Terraform attivo: lab/ e testtf2/ sono bozze non usate
       - name: Terraform format check
-        if: ${{ hashFiles('**/*.tf') != '' }}
-        run: terraform fmt -check -recursive
+        if: ${{ hashFiles('Infrastructure/Terraform/**/*.tf') != '' }}
+        run: terraform fmt -check -recursive Infrastructure/Terraform
 
-      - name: Terraform init (no backend)
-        if: ${{ hashFiles('**/*.tf') != '' }}
-        run: terraform init -backend=false
-
-      - name: Terraform validate
-        if: ${{ hashFiles('**/*.tf') != '' }}
-        run: terraform validate
-
-      - name: Terraform plan (simulation only)
-        if: ${{ hashFiles('**/*.tf') != '' }}
+      - name: Terraform init (no backend) e validate
+        if: ${{ hashFiles('Infrastructure/Terraform/**/*.tf') != '' }}
         run: |
-          terraform plan -lock=false -input=false -refresh=true -out=tfplan.out
+          for dir in Infrastructure/Terraform/Backendtf Infrastructure/Terraform/Mainterraform; do
+            echo "::group::$dir"
+            terraform -chdir="$dir" init -backend=false -input=false
+            terraform -chdir="$dir" validate
+            echo "::endgroup::"
+          done
+
+      # terraform plan richiede credenziali AWS (OIDC) e un terraform.tfvars:
+      # va eseguito nel workflow CD, non nella CI senza credenziali.
 
       - name: Ansible lint
         if: ${{ hashFiles('ansible/**/*.yml') != '' || hashFiles('ansible/**/*.yaml') != '' }}
