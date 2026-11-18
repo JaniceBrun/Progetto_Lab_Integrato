@@ -11,7 +11,7 @@
 
 - name: Installa agente Wazuh (versione fissata)
   apt:
-    name: "wazuh-agent={{ wazuh_agent_version }}"
+    name: "wazuh-agent={{ wazuh_version }}"
     state: present
     update_cache: true
   environment:

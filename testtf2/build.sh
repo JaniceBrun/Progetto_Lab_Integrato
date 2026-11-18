@@ -61,6 +61,10 @@ terraform fmt -check -recursive
 echo "==> Terraform init"
 terraform init -upgrade
 
+if [[ "$MODE" == "apply" ]]; then
+  echo "==> Avvio sequenza: init -> validate -> plan -> apply"
+fi
+
 echo "==> Terraform validate"
 terraform validate
 
@@ -68,12 +72,17 @@ case "$MODE" in
   plan)
     echo "==> Terraform plan"
     terraform plan -out="$TF_PLAN"
+    echo "==> Plan completato alle $(date '+%Y-%m-%d %H:%M:%S %Z')"
     ;;
   apply)
     echo "==> Terraform plan"
     terraform plan -out="$TF_PLAN"
+
     echo "==> Terraform apply"
     terraform apply "$TF_PLAN"
+
+    APPLY_COMPLETED_AT="$(date '+%Y-%m-%d %H:%M:%S %Z')"
+    echo "==> Terraform apply completato alle $APPLY_COMPLETED_AT"
     rm -f "$TF_PLAN"
     ;;
   destroy)

@@ -25,6 +25,8 @@ if [ '${ playbook }' = 'wazuh.yml' ]; then
   WAZUH_MANAGER_IP="$(hostname -I | awk '{print $1}')"
 fi
 
+WAZUH_VERSION='4.14.10-1'
+
 exec /usr/bin/ansible-pull \
   -U '${ repo_url }' \
   -C '${ repo_branch }' \
@@ -34,6 +36,7 @@ exec /usr/bin/ansible-pull \
   --purge \
   testtf2/ansible/${ playbook } \
   -e "wazuh_manager_ip=$WAZUH_MANAGER_IP" \
+  -e "wazuh_version=$WAZUH_VERSION" \
   >> /var/log/ansible-pull.log 2>&1
 RUNNER
 chmod 0750 /usr/local/bin/ansible-pull-lab
