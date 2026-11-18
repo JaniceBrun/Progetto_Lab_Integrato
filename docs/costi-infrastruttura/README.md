@@ -1,54 +1,59 @@
-# Analisi dei costi AWS – Progetto Lab Integrato (Vanguard)
+# Costi AWS dell'infrastruttura
 
-Data analisi: 17 novembre 2026 · Regione: **eu-south-1 (Europa – Milano)** · Valuta: USD, tasse escluse
+Stima del 17/11/2026 fatta con l'**AWS Pricing Calculator** ufficiale. Regione **eu-south-1 (Milano)**, prezzi On-Demand in USD, tasse escluse.
 
-> **Importante:** tutti gli importi di questa cartella sono **stime** calcolate con l'AWS Pricing Calculator ufficiale.
-> L'infrastruttura **non è ancora stata deployata** (nessun `terraform apply`), quindi non esistono addebiti reali in AWS Billing da confrontare.
-> Quando sarà disponibile il Cost Explorer dell'account, i dati reali andranno usati solo come confronto con queste stime.
+- **Stima completa nel Calculator:** https://calculator.aws/#/estimate?id=ef836fcf0185d05366126fc600b21a586f6a0ee7
+- L'infrastruttura non è ancora stata deployata: questi sono **costi stimati**, non addebiti reali.
 
-## Stima ufficiale (AWS Pricing Calculator)
+![Riepilogo della stima](screenshots/01-riepilogo-stima.jpg)
 
-- **Link pubblico della stima:** https://calculator.aws/#/estimate?id=ef836fcf0185d05366126fc600b21a586f6a0ee7
-  (nome: *Vanguard Lab Integrato - eu-south-1 (24x7 on-demand)*; il link scade dopo 1 anno, a novembre 2027)
-- Screenshot: [`screenshots/`](screenshots/)
+## Costo mensile (acceso 24 ore su 24)
 
-## Risultato in sintesi
+| Servizio | Configurazione (da Terraform) | Mensile | Annuale |
+|---|---|---:|---:|
+| EC2 `wazuh` | `t3.large`, disco gp3 60 GB | 77,57 | 930,84 |
+| EC2 `waf` | `t3.small`, disco gp3 30 GB | 22,39 | 268,68 |
+| EC2 `app` (Juice Shop) | `t3.small`, disco gp3 20 GB | 21,47 | 257,64 |
+| EC2 `bastion` | `t3.micro`, disco gp3 10 GB | 11,78 | 141,36 |
+| NAT Gateway | 1, circa 20 GB/mese di traffico | 37,50 | 450,00 |
+| IP pubblici | 3 Elastic IP (NAT, waf, bastion) | 10,95 | 131,40 |
+| Traffico in uscita | circa 50 GB/mese verso Internet | 4,50 | 54,00 |
+| CloudWatch Logs | VPC Flow Logs, circa 5 GB/mese | 3,02 | 36,24 |
+| KMS | 2 chiavi (lab e state Terraform) | 2,06 | 24,72 |
+| S3 | bucket dello state Terraform e dei log | 0,06 | 0,72 |
+| **Totale** | | **191,30** | **2.295,60** |
 
-| Scenario | Costo mensile | Costo annuale |
+I costi EC2 comprendono il disco e il monitoraggio dettagliato (2,10 USD per VM). I servizi senza costo (VPC, subnet, security group, IAM) non sono in tabella.
+
+![Dettaglio dei servizi](screenshots/02-dettaglio-servizi-1.jpg)
+
+## Logging e monitoraggio
+
+Oggi il codice prevede VPC Flow Logs su CloudWatch e monitoraggio dettagliato delle 4 VM.
+
+| Scenario | Flow Logs al mese | Costo mensile |
 |---|---:|---:|
-| **Base: 24x7, on-demand (Calculator)** | **191,30 USD** | **2.295,60 USD** |
-| Dev/test: EC2 spente fuori orario (220 h/mese), resto sempre attivo | 105,99 USD | 1.271,83 USD |
-| Dev/test: stack `Mainterraform` distrutto fuori orario (220 h/mese) | 65,09 USD | 781,07 USD |
-| Solo sessioni di laboratorio: stack distrutto (80 h/mese) | 30,44 USD | 365,28 USD |
+| Basso | 1 GB | 9,00 |
+| Medio (usato nella stima) | 5 GB | 11,42 |
+| Alto (molte scansioni del red team) | 25 GB | 23,52 |
 
-Su 3 anni (vedi [costo-3-anni.md](costo-3-anni.md)): **6.887,16 USD** On-Demand 24x7; **4.330,26 USD** con EC2 Instance Savings Plan 3 anni ad anticipo totale (−37%); **2.343,24 USD** distruggendo lo stack fuori orario (−66%).
+CloudTrail e gli allarmi CloudWatch non sono configurati: aggiungerli costerebbe circa 1 USD/mese.
 
-Costo medio orario dello scenario base: circa **0,26 USD/h**.
+## Come risparmiare
 
-Costo di logging e monitoraggio già previsto dal codice (scenario medio): **11,42 USD/mese**
-(VPC Flow Logs su CloudWatch Logs 3,02 USD + monitoraggio dettagliato EC2 8,40 USD, quest'ultimo incluso nelle voci EC2).
+| Modalità d'uso | Mensile | Su 3 anni |
+|---|---:|---:|
+| Tutto acceso 24 ore su 24 | 191,30 | 6.887 |
+| Con Savings Plan EC2 di 3 anni (tutto anticipato) | 120,29 | 4.330 |
+| VM spente fuori orario (10 h × 22 giorni) | 105,99 | 3.816 |
+| **Stack distrutto fuori orario con `terraform destroy`** | **65,09** | **2.343** |
 
-Prime 3 voci di costo: EC2 Wazuh `t3.large` (77,57 USD, 41%), NAT Gateway (37,50 USD, 20%), IPv4 pubblici (10,95 USD, 6%).
+- **Consiglio principale:** creare lo stack `Mainterraform` solo durante le sessioni di lavoro e distruggerlo alla fine. NAT Gateway e IP pubblici si pagano anche con le VM spente, quindi spegnere le VM non basta.
+- **Savings Plan:** conviene solo se il laboratorio resta acceso 24 ore su 24 per 3 anni. È un impegno che non si può annullare e si paga anche con le VM spente.
+- Impostare un **AWS Budget** (i primi due sono gratuiti) con un avviso a 100 USD/mese.
 
-## Base di codice analizzata
+## Ipotesi e limiti
 
-- Branch di partenza: `janice-synctest` (ultimo commit 15/11/2026, `e878082`), il più aggiornato: consolida il codice Terraform di `sara/infrastruttura` in `Infrastructure/Terraform/`.
-- Stack analizzati: `Infrastructure/Terraform/Mainterraform` (laboratorio) e `Infrastructure/Terraform/Backendtf` (backend dello state).
-- Cartelle `lab/` e `testtf2/` considerate bozze/test e **escluse** dalla stima (vedi inventario).
-
-## Documenti
-
-| File | Contenuto |
-|---|---|
-| [infrastructure-inventory.md](infrastructure-inventory.md) | Inventario delle risorse AWS realmente definite in Terraform |
-| [aws-pricing-calculator.md](aws-pricing-calculator.md) | Parametri inseriti nel Calculator, prezzi unitari, procedura per riprodurre la stima |
-| [cost-breakdown.md](cost-breakdown.md) | Tabella costi per servizio (orario, mensile, annuale) e confronto 24x7 vs dev/test |
-| [logging-monitoring.md](logging-monitoring.md) | CloudWatch Logs, metriche, allarmi, CloudTrail: scenari basso/medio/alto |
-| [costo-3-anni.md](costo-3-anni.md) | Costo su 36 mesi, Savings Plans 1 e 3 anni, confronto con gli orari dev/test |
-| [optimization-recommendations.md](optimization-recommendations.md) | Opportunità di risparmio senza modificare l'architettura |
-
-## Limiti principali
-
-- Volumi di traffico e di log sono ipotesi (nessun dato reale): sono dichiarati in ogni documento.
-- I prezzi del Calculator **escludono il piano gratuito** AWS (100 GB/mese di uscita dati, 5 GB di log, 20.000 richieste KMS, ecc.) e gli eventuali crediti AWS Educate/Academy.
-- Nel repository ci sono incongruenze di regione (`terraform.tfvars.example` e workflow CD usano `us-east-1`): la stima usa `eu-south-1`, regione decisa dal team e usata dal backend.
+- Il traffico e i volumi dei log sono stimati: non esistono ancora dati reali.
+- Dopo il primo deploy, confrontare questa stima con Cost Explorer filtrando per il tag `Project`.
+- `terraform.tfvars.example` e i workflow CI/CD usano ancora `us-east-1`: vanno allineati a `eu-south-1`.
