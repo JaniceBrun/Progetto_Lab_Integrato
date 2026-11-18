@@ -103,6 +103,13 @@
     line: "node.name: wazuh-indexer"
   notify: Riavvia wazuh-indexer
 
+- name: Normalizza il compatibility flag dell'Indexer
+  ansible.builtin.lineinfile:
+    path: /etc/wazuh-indexer/opensearch.yml
+    regexp: '^compatibility\.override_main_response_version:.*'
+    line: "compatibility.override_main_response_version: true"
+  notify: Riavvia wazuh-indexer
+
 - name: Configura il nodo singolo dell'Indexer
   ansible.builtin.lineinfile:
     path: /etc/wazuh-indexer/opensearch.yml
