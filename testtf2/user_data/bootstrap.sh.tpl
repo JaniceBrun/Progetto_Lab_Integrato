@@ -27,13 +27,12 @@ fi
 
 WAZUH_VERSION='4.14.10-1'
 
-exec /usr/bin/ansible-pull \
+exec flock -n /var/lock/ansible-pull-lab.lock /usr/bin/ansible-pull \
   -U '${ repo_url }' \
   -C '${ repo_branch }' \
   -d /opt/ansible-pull \
   -i localhost, \
   -c local \
-  --purge \
   testtf2/ansible/${ playbook } \
   -e "wazuh_manager_ip=$WAZUH_MANAGER_IP" \
   -e "wazuh_version=$WAZUH_VERSION" \
@@ -49,6 +48,7 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
+WorkingDirectory=/
 ExecStart=/usr/local/bin/ansible-pull-lab
 UNIT
 

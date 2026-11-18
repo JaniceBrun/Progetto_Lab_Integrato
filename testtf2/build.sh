@@ -18,8 +18,6 @@ require_command() {
   fi
 }
 
-require_command terraform
-
 case "$MODE" in
   apply|plan|syntax|destroy) ;;
   *)
@@ -54,6 +52,8 @@ if [[ "$MODE" == "syntax" ]]; then
   run_ansible_checks
   exit 0
 fi
+
+require_command terraform
 
 echo "==> Terraform format check"
 terraform fmt -check -recursive

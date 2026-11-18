@@ -1,14 +1,17 @@
 ---
-# Installazione Wazuh all-in-one usando i pacchetti ufficiali. Questa scelta
-# mantiene certificati, cluster e pacchetti esplicitamente controllabili e
-# evita il reinstallatore interattivo quando ansible-pull viene ripetuto.
+- name: Verifica memoria sufficiente per Wazuh Indexer
+  ansible.builtin.assert:
+    that:
+      - ansible_memtotal_mb >= 3500
+    fail_msg: "Wazuh all-in-one richiede almeno 3500 MB; memoria rilevata: {{ ansible_memtotal_mb }} MB."
 
+# Installazione Wazuh all-in-one usando i pacchetti ufficiali.
 - name: Importa repository APT Wazuh
   ansible.builtin.include_tasks: repo.yml
 
-- name: Crea directory temporanea per i certificati Wazuh
+- name: Crea directory persistente per i certificati Wazuh
   ansible.builtin.file:
-    path: /tmp/wazuh-certs
+    path: /opt/wazuh-certs
     state: directory
     owner: root
     group: root
@@ -17,23 +20,23 @@
 - name: Scarica lo strumento ufficiale per i certificati Wazuh
   ansible.builtin.get_url:
     url: https://packages.wazuh.com/4.14/wazuh-certs-tool.sh
-    dest: /tmp/wazuh-certs/wazuh-certs-tool.sh
+    dest: /opt/wazuh-certs/wazuh-certs-tool.sh
     mode: "0750"
     force: false
 
 - name: Installa configurazione dei certificati Wazuh
   ansible.builtin.template:
     src: config.yml.j2
-    dest: /tmp/wazuh-certs/config.yml
+    dest: /opt/wazuh-certs/config.yml
     owner: root
     group: root
     mode: "0600"
 
 - name: Genera i certificati Wazuh una sola volta
   ansible.builtin.command:
-    cmd: bash /tmp/wazuh-certs/wazuh-certs-tool.sh -A
-    chdir: /tmp/wazuh-certs
-    creates: /tmp/wazuh-certs/wazuh-certificates
+    cmd: bash /opt/wazuh-certs/wazuh-certs-tool.sh -A
+    chdir: /opt/wazuh-certs
+    creates: /opt/wazuh-certs/wazuh-certificates
   register: wazuh_certs_generation
   changed_when: wazuh_certs_generation.rc == 0
 
@@ -48,26 +51,42 @@
   environment:
     DEBIAN_FRONTEND: noninteractive
 
+- name: Verifica i percorsi dei certificati configurati nell'Indexer
+  ansible.builtin.command:
+    cmd: grep -E 'pem|certs' /etc/wazuh-indexer/opensearch.yml
+  register: wazuh_indexer_cert_paths
+  changed_when: false
+  failed_when: false
+
+- name: Verifica i percorsi dei certificati configurati nella Dashboard
+  ansible.builtin.command:
+    cmd: grep -E 'pem|certs' /etc/wazuh-dashboard/opensearch_dashboards.yml
+  register: wazuh_dashboard_cert_paths
+  changed_when: false
+  failed_when: false
+
 - name: Crea directory dei certificati dell'Indexer
   ansible.builtin.file:
     path: /etc/wazuh-indexer/certs
     state: directory
-    owner: root
+    owner: wazuh-indexer
     group: wazuh-indexer
-    mode: "0750"
+    mode: "0500"
 
-- name: Distribuisci certificati TLS dell'Indexer
+- name: Copia certificati TLS dell'Indexer con nomi attesi
   ansible.builtin.copy:
-    src: "/tmp/wazuh-certs/wazuh-certificates/{{ item }}"
-    dest: "/etc/wazuh-indexer/certs/{{ item }}"
+    src: "/opt/wazuh-certs/wazuh-certificates/{{ item.src }}"
+    dest: "/etc/wazuh-indexer/certs/{{ item.dest }}"
     remote_src: true
-    owner: root
+    owner: wazuh-indexer
     group: wazuh-indexer
-    mode: "0640"
+    mode: "0400"
   loop:
-    - wazuh-indexer.pem
-    - wazuh-indexer-key.pem
-    - root-ca.pem
+    - { src: 'wazuh-indexer.pem', dest: 'indexer.pem' }
+    - { src: 'wazuh-indexer-key.pem', dest: 'indexer-key.pem' }
+    - { src: 'root-ca.pem', dest: 'root-ca.pem' }
+    - { src: 'admin.pem', dest: 'admin.pem' }
+    - { src: 'admin-key.pem', dest: 'admin-key.pem' }
   notify: Riavvia wazuh-indexer
 
 - name: Configura il nome del nodo dell'Indexer
@@ -81,29 +100,52 @@
   ansible.builtin.lineinfile:
     path: /etc/wazuh-indexer/opensearch.yml
     regexp: '^network\.host:'
-    line: "network.host: {{ wazuh_manager_ip }}"
+    line: "network.host: 0.0.0.0"
   notify: Riavvia wazuh-indexer
 
-- name: Imposta heap iniziale JVM dell'Indexer a 4g
+- name: Imposta heap iniziale JVM dell'Indexer
   ansible.builtin.lineinfile:
     path: /etc/wazuh-indexer/jvm.options
     regexp: '^-Xms'
-    line: '-Xms4g'
+    line: "-Xms{{ wazuh_indexer_heap }}"
   notify: Riavvia wazuh-indexer
 
-- name: Imposta heap massimo JVM dell'Indexer a 4g
+- name: Imposta heap massimo JVM dell'Indexer
   ansible.builtin.lineinfile:
     path: /etc/wazuh-indexer/jvm.options
     regexp: '^-Xmx'
-    line: '-Xmx4g'
+    line: "-Xmx{{ wazuh_indexer_heap }}"
   notify: Riavvia wazuh-indexer
 
-- name: Abilita e avvia wazuh-indexer
-  ansible.builtin.systemd_service:
-    name: wazuh-indexer
-    enabled: true
-    state: started
-    daemon_reload: true
+- name: Abilita e avvia wazuh-indexer con diagnostica
+  block:
+    - name: Avvia il servizio wazuh-indexer
+      ansible.builtin.systemd_service:
+        name: wazuh-indexer
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    - name: Attendi che l'Indexer sia pronto sulla porta 9200
+      ansible.builtin.wait_for:
+        host: "127.0.0.1"
+        port: 9200
+        timeout: 300
+
+  rescue:
+    - name: Leggi gli ultimi log dell'Indexer
+      ansible.builtin.command:
+        cmd: journalctl -u wazuh-indexer --no-pager -o cat -n 50
+      register: wazuh_indexer_journal
+      changed_when: false
+
+    - name: Mostra gli ultimi log dell'Indexer
+      ansible.builtin.debug:
+        msg: "{{ wazuh_indexer_journal.stdout_lines | default([]) | join('\n') }}"
+
+    - name: Segnala il fallimento dell'Indexer
+      ansible.builtin.fail:
+        msg: "wazuh-indexer non è diventato disponibile sulla porta 9200."
 
 - name: Attendi che l'Indexer sia pronto sulla porta 9200
   ansible.builtin.wait_for:
@@ -142,7 +184,7 @@
 
 - name: Distribuisci certificati TLS del Manager
   ansible.builtin.copy:
-    src: "/tmp/wazuh-certs/wazuh-certificates/{{ item.src }}"
+    src: "/opt/wazuh-certs/wazuh-certificates/{{ item.src }}"
     dest: "/etc/wazuh-manager/certs/{{ item.dest }}"
     remote_src: true
     owner: root
@@ -165,22 +207,29 @@
   ansible.builtin.file:
     path: /etc/wazuh-dashboard/certs
     state: directory
-    owner: root
+    owner: wazuh-dashboard
     group: wazuh-dashboard
-    mode: "0750"
+    mode: "0500"
 
-- name: Distribuisci certificati TLS della Dashboard
+- name: Distribuisci certificati TLS della Dashboard con nomi attesi
   ansible.builtin.copy:
-    src: "/tmp/wazuh-certs/wazuh-certificates/{{ item.src }}"
+    src: "/opt/wazuh-certs/wazuh-certificates/{{ item.src }}"
     dest: "/etc/wazuh-dashboard/certs/{{ item.dest }}"
     remote_src: true
-    owner: root
+    owner: wazuh-dashboard
     group: wazuh-dashboard
-    mode: "0640"
+    mode: "0400"
   loop:
-    - { src: 'wazuh-dashboard.pem', dest: 'wazuh-dashboard.pem' }
-    - { src: 'wazuh-dashboard-key.pem', dest: 'wazuh-dashboard-key.pem' }
+    - { src: 'wazuh-dashboard.pem', dest: 'dashboard.pem' }
+    - { src: 'wazuh-dashboard-key.pem', dest: 'dashboard-key.pem' }
     - { src: 'root-ca.pem', dest: 'root-ca.pem' }
+  notify: Riavvia wazuh-dashboard
+
+- name: Configura l'endpoint dell'Indexer nella Dashboard
+  ansible.builtin.lineinfile:
+    path: /etc/wazuh-dashboard/opensearch_dashboards.yml
+    regexp: '^opensearch\.hosts:'
+    line: 'opensearch.hosts: ["https://{{ wazuh_manager_ip }}:9200"]'
   notify: Riavvia wazuh-dashboard
 
 - name: Abilita e avvia wazuh-dashboard
