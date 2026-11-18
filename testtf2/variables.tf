@@ -71,15 +71,15 @@ variable "waf_volume_gb" {
 
 # ---- Wazuh SIEM ----
 variable "wazuh_instance_type" {
-  description = "Tipo istanza Wazuh all-in-one (manager+indexer+dashboard). t3.large=2vCPU/8GB, più vicino disponibile nel Learner Lab a c6i.xlarge"
+  description = "Tipo istanza Wazuh ridotto per il Learner Lab"
   type        = string
-  default     = "t3.large"
+  default     = "t3.medium"
 }
 
 variable "wazuh_volume_gb" {
-  description = "Volume EBS Wazuh in GiB"
+  description = "Volume EBS Wazuh in GiB ridotto per il Learner Lab"
   type        = number
-  default     = 60
+  default     = 30
 }
 
 # ---- Bastion ----

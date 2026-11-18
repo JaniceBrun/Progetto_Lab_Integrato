@@ -12,14 +12,14 @@ locals {
     repo_url         = "https://github.com/JaniceBrun/Progetto_Lab_Integrato.git"
     repo_branch      = "janice-synctest"
     playbook         = "waf.yml"
-    wazuh_manager_ip = "10.0.2.10"
+    wazuh_manager_ip = module.wazuh.private_ip
   })
 
   wazuh_userdata = templatefile("${path.module}/../terraform/user_data/bootstrap.sh.tpl", {
     repo_url         = "https://github.com/JaniceBrun/Progetto_Lab_Integrato.git"
     repo_branch      = "janice-synctest"
     playbook         = "wazuh.yml"
-    wazuh_manager_ip = "10.0.2.10"
+    wazuh_manager_ip = ""
   })
 
   bastion_userdata = <<-EOF
@@ -49,7 +49,7 @@ locals {
     repo_url         = "https://github.com/JaniceBrun/Progetto_Lab_Integrato.git"
     repo_branch      = "janice-synctest"
     playbook         = "juiceshop.yml"
-    wazuh_manager_ip = "10.0.2.10"
+    wazuh_manager_ip = module.wazuh.private_ip
   })
 }
 
@@ -116,7 +116,7 @@ module "wazuh" {
   key_name            = var.key_name
   lab_role_name       = var.lab_role_name
   associate_public_ip = false
-  private_ip          = "10.0.2.10"
+  private_ip          = null
   user_data           = local.wazuh_userdata
   tags                = local.tags
 }

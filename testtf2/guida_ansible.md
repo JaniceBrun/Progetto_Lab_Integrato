@@ -47,8 +47,8 @@ terraform plan -out=tfplan.binary
 
 Esaminare attentamente il piano. Verificare in particolare:
 
-- Wazuh con indirizzo privato `10.0.2.10`.
-- Wazuh nel volume privato con 60 GB.
+- Wazuh con indirizzo privato assegnato dinamicamente dalla subnet privata.
+- Wazuh nel volume privato con il volume configurato da Terraform.
 - User data con i playbook `wazuh.yml`, `waf.yml` e `juiceshop.yml`.
 - Nessuna modifica distruttiva inattesa.
 
@@ -119,21 +119,28 @@ sudo systemctl status ansible-pull-lab.service
 sudo journalctl -u ansible-pull-lab.service --since "10 minutes ago"
 ```
 
-Il playbook può essere provato direttamente anche dalla copia locale clonata dal repository:
+Il playbook può essere provato direttamente dalla copia clonata dal repository. Ottieni prima l'IP privato reale da Terraform:
 
 ```bash
+terraform output -raw wazuh_private_ip
+```
+
+Impostalo in una shell e rilancia il playbook:
+
+```bash
+WAZUH_IP=$(terraform -chdir=/percorso/Progetto_Lab_Integrato/testtf2 output -raw wazuh_private_ip)
 cd /opt/ansible-pull/ansible
-sudo ansible-pull -U https://github.com/JaniceBrun/Progetto_Lab_Integrato.git -C main -d /opt/ansible-pull -i localhost, -c local --purge ansible/wazuh.yml -e 'wazuh_manager_ip=10.0.2.10'
+sudo ansible-pull -U https://github.com/JaniceBrun/Progetto_Lab_Integrato.git -C main -d /opt/ansible-pull -i localhost, -c local --purge ansible/wazuh.yml -e "wazuh_manager_ip=$(hostname -I | awk '{print $1}')"
 ```
 
-Questo comando va eseguito **solo sulla VM Wazuh**. Sulla WAF usare `waf.yml` e su Juice Shop usare `juiceshop.yml`:
+Questo comando va eseguito **solo sulla VM Wazuh**. Sulla WAF e su Juice Shop usa l'IP recuperato da Terraform:
 
 ```bash
-sudo ansible-pull -U https://github.com/JaniceBrun/Progetto_Lab_Integrato.git -C main -d /opt/ansible-pull -i localhost, -c local --purge ansible/waf.yml -e 'wazuh_manager_ip=10.0.2.10'
+sudo ansible-pull -U https://github.com/JaniceBrun/Progetto_Lab_Integrato.git -C main -d /opt/ansible-pull -i localhost, -c local --purge ansible/waf.yml -e "wazuh_manager_ip=$WAZUH_IP"
 ```
 
 ```bash
-sudo ansible-pull -U https://github.com/JaniceBrun/Progetto_Lab_Integrato.git -C main -d /opt/ansible-pull -i localhost, -c local --purge ansible/juiceshop.yml -e 'wazuh_manager_ip=10.0.2.10'
+sudo ansible-pull -U https://github.com/JaniceBrun/Progetto_Lab_Integrato.git -C main -d /opt/ansible-pull -i localhost, -c local --purge ansible/juiceshop.yml -e "wazuh_manager_ip=$WAZUH_IP"
 ```
 
 ## 8. Verificare i servizi Wazuh
