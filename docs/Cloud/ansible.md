@@ -6,6 +6,7 @@
 3. [AMI personalizzate](#ami-personalizzate)
 4. [ansible-pull](#ansible-pull)
 5. [Nginx come reverse proxy per Juice Shop](#nginx-come-reverse-proxy-per-juice-shop)
+6. [Inventario dinamico AWS](#inventario-dinamico-aws)
 
 ---
 
@@ -31,7 +32,7 @@ Nel progetto è già configurato per Juice Shop: installa Docker, nginx e avvia 
 - Non ha feedback diretto: per vedere i log devi connetterti alla VM e leggere `/var/log/cloud-init-output.log`
 - Non gestisce dipendenze tra VM (es. configurare l'agent Wazuh su WAF richiede che Wazuh sia già up)
 
-Per questo il `user_data` è usato solo per il bootstrap minimo (installare Docker, avviare Juice Shop, configurare nginx), mentre tutto il resto è delegato ad Ansible.
+Per questo il `user_data` è usato solo per il bootstrap minimo (installare ansible e git), mentre tutto il resto è delegato ad Ansible.
 
 ---
 
@@ -77,20 +78,20 @@ VM configurata e pronta
 
 ### Struttura della repo
 
-I playbook vanno nella cartella `Infrastructure/Ansible/` già presente nel progetto:
+I playbook si trovano in `testtf2/ansible/`:
 
 ```
-Infrastructure/Ansible/
+testtf2/ansible/
 ├── playbooks/
-│   ├── wazuh.yml       ← eseguito dalla VM wazuh
-│   ├── waf.yml         ← eseguito dalla VM waf
-│   └── bastion.yml     ← eseguito dalla VM bastion
+│   ├── wazuh.yml
+│   ├── waf.yml
+│   └── juice.yml
 ├── roles/
 │   ├── wazuh/
 │   ├── waf/
-│   └── common/         ← configurazioni comuni a tutte le VM
+│   └── common/
 └── inventory/
-    └── hosts.yml
+    └── aws_ec2.yml
 ```
 
 ### Esempio di user_data con ansible-pull
@@ -101,14 +102,14 @@ apt-get update -y
 apt-get install -y ansible git
 
 ansible-pull \
-  -U https://github.com/<org>/<repo>.git \
+  -U https://github.com/JaniceBrun/Progetto_Lab_Integrato.git \
   -C main \
-  Infrastructure/Ansible/playbooks/wazuh.yml
+  testtf2/ansible/playbooks/wazuh.yml
 ```
 
 ### Repo privata
 
-Se la repo è privata (come probabilmente è la vostra), la VM deve poter autenticarsi a GitHub. Le opzioni sono:
+Se la repo diventa privata, la VM deve poter autenticarsi a GitHub. Le opzioni sono:
 
 **Deploy key (consigliata per il lab):**
 1. Genera una chiave SSH dedicata: `ssh-keygen -t ed25519 -f deploy_key`
@@ -118,7 +119,7 @@ Se la repo è privata (come probabilmente è la vostra), la VM deve poter autent
 **Token GitHub:**
 Usa un Personal Access Token (PAT) con scope `repo` nell'URL:
 ```bash
-ansible-pull -U https://<token>@github.com/<org>/<repo>.git ...
+ansible-pull -U https://<token>@github.com/JaniceBrun/Progetto_Lab_Integrato.git ...
 ```
 Più semplice ma meno sicuro — non committare il token nella repo.
 
@@ -139,11 +140,23 @@ Con `ansible-pull` puoi aggiornare la configurazione di una VM senza distruggerl
 
 ```bash
 # esegue ansible-pull ogni ora
-echo "0 * * * * ubuntu ansible-pull -U https://github.com/<org>/<repo>.git Infrastructure/Ansible/playbooks/wazuh.yml" \
+echo "0 * * * * ubuntu ansible-pull -U https://github.com/JaniceBrun/Progetto_Lab_Integrato.git testtf2/ansible/playbooks/wazuh.yml" \
   >> /etc/cron.d/ansible-pull
 ```
 
-Così ogni modifica ai playbook viene applicata automaticamente a tutte le VM senza intervento manuale.
+### Comandi config iniziale
+
+```bash
+ansible-pull -U https://github.com/JaniceBrun/Progetto_Lab_Integrato.git -C main testtf2/ansible/playbooks/wazuh.yml
+ansible-pull -U https://github.com/JaniceBrun/Progetto_Lab_Integrato.git -C main testtf2/ansible/playbooks/waf.yml
+ansible-pull -U https://github.com/JaniceBrun/Progetto_Lab_Integrato.git -C main testtf2/ansible/playbooks/juice.yml
+```
+
+Oppure con `site.yml` per eseguire tutto in ordine:
+```bash
+cd testtf2/ansible
+ansible-playbook site.yml
+```
 
 ---
 
@@ -196,16 +209,59 @@ curl -s http://localhost | head -5
 
 Il `user_data` gira solo al primo avvio. Se fai `terraform apply` su una VM già esistente senza distruggerla, nginx non viene installato automaticamente — devi farlo a mano o tramite un playbook Ansible.
 
+---
 
-### comandi config iniziale test
+## Inventario dinamico AWS
 
-- ansible-pull -U https://github.com/JaniceBrun/Progetto_Lab_Integrato.git -C main testtf2/ansible/playbooks/wazuh.yml
+### Perché abbiamo abbandonato hosts.ini
 
-- ansible-pull -U https://github.com/JaniceBrun/Progetto_Lab_Integrato.git -C main testtf2/ansible/playbooks/waf.yml
+La prima implementazione usava un file `hosts.ini` generato automaticamente da un `null_resource` in Terraform tramite `local-exec`. Questo approccio funzionava ma aveva due problemi:
 
-- ansible-pull -U https://github.com/JaniceBrun/Progetto_Lab_Integrato.git -C main testtf2/ansible/playbooks/juice.yml
+- Il file conteneva IP in chiaro — anche se in `.gitignore`, è una superficie di rischio inutile
+- Aggiungeva un accoppiamento tra Terraform e Ansible: se il `null_resource` falliva, l'inventario era vuoto o obsoleto
 
+### La soluzione: plugin aws_ec2
 
+Il plugin `amazon.aws.aws_ec2` interroga direttamente le API AWS per ottenere le istanze in esecuzione, filtrandole per tag. Ansible costruisce l'inventario al volo — nessun file con IP, nessuna dipendenza da Terraform.
+
+Il file `inventory/aws_ec2.yml` filtra le istanze per:
+- `tag:Project = labtest`
+- `tag:ManagedBy = Terraform`
+- `instance-state-name = running`
+
+E le raggruppa automaticamente per il tag `Role` (wazuh, waf, juice, bastion).
+
+### Prerequisiti
+
+La macchina da cui lanci Ansible deve avere:
+
+1. La collection `amazon.aws` installata:
+```bash
+ansible-galaxy collection install amazon.aws
+```
+
+2. Le credenziali AWS configurate — nel Learner Lab copia le credenziali temporanee dalla pagina del lab:
+```bash
+export AWS_ACCESS_KEY_ID=...
+export AWS_SECRET_ACCESS_KEY=...
+export AWS_SESSION_TOKEN=...
+```
+
+### Verifica inventario
+
+Prima di eseguire i playbook, verifica che l'inventario risolva correttamente le istanze:
+
+```bash
+ansible-inventory -i inventory/aws_ec2.yml --list
+```
+
+Dovresti vedere le VM raggruppate per ruolo con i loro IP.
+
+### Esecuzione
+
+```bash
 cd testtf2/ansible
 ansible-playbook site.yml
+```
 
+Non serve aggiornare nessun file dopo `terraform apply` — Ansible trova sempre gli IP aggiornati interrogando AWS direttamente.

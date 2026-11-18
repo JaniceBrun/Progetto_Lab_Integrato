@@ -10,14 +10,14 @@ locals {
 
   waf_userdata = templatefile("${path.module}/../terraform/user_data/bootstrap.sh.tpl", {
     repo_url         = "https://github.com/JaniceBrun/Progetto_Lab_Integrato.git"
-    repo_branch      = "main"
+    repo_branch      = "janice-synctest"
     playbook         = "waf.yml"
     wazuh_manager_ip = "10.0.2.10"
   })
 
   wazuh_userdata = templatefile("${path.module}/../terraform/user_data/bootstrap.sh.tpl", {
     repo_url         = "https://github.com/JaniceBrun/Progetto_Lab_Integrato.git"
-    repo_branch      = "main"
+    repo_branch      = "janice-synctest"
     playbook         = "wazuh.yml"
     wazuh_manager_ip = "10.0.2.10"
   })
@@ -34,19 +34,13 @@ locals {
     echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIANI89MdEkKMcZYadmcCQ9YJEEAPXCb8+QjChd7d4GmP marco_progettolab" >> /home/ubuntu/.ssh/authorized_keys
     # Utente 3 (nome.cognome)
     # echo "ssh-ed25519 AAAA...chiave-utente3" >> /home/ubuntu/.ssh/authorized_keys
-    # Utente 4 (nome.cognome)
-    # echo "ssh-ed25519 AAAA...chiave-utente4" >> /home/ubuntu/.ssh/authorized_keys
-    # Utente 5 (nome.cognome)
-    # echo "ssh-ed25519 AAAA...chiave-utente5" >> /home/ubuntu/.ssh/authorized_keys
-    # Utente 6 (nome.cognome)
-    # echo "ssh-ed25519 AAAA...chiave-utente6" >> /home/ubuntu/.ssh/authorized_keys
     apt-get update -y
     apt-get install -y ansible git
   EOF
 
   juice_userdata = templatefile("${path.module}/../terraform/user_data/bootstrap.sh.tpl", {
     repo_url         = "https://github.com/JaniceBrun/Progetto_Lab_Integrato.git"
-    repo_branch      = "main"
+    repo_branch      = "janice-synctest"
     playbook         = "juiceshop.yml"
     wazuh_manager_ip = "10.0.2.10"
   })
