@@ -32,7 +32,7 @@ exec /usr/bin/ansible-pull \
   -i localhost, \
   -c local \
   --purge \
-  ansible/${ playbook } \
+  testtf2/ansible/${ playbook } \
   -e "wazuh_manager_ip=$WAZUH_MANAGER_IP" \
   >> /var/log/ansible-pull.log 2>&1
 RUNNER
