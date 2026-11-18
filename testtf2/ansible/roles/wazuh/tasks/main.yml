@@ -89,11 +89,25 @@
     - { src: 'admin-key.pem', dest: 'admin-key.pem' }
   notify: Riavvia wazuh-indexer
 
+- name: Configura il nome del cluster dell'Indexer
+  ansible.builtin.lineinfile:
+    path: /etc/wazuh-indexer/opensearch.yml
+    regexp: '^cluster\.name:'
+    line: "cluster.name: wazuh-cluster"
+  notify: Riavvia wazuh-indexer
+
 - name: Configura il nome del nodo dell'Indexer
   ansible.builtin.lineinfile:
     path: /etc/wazuh-indexer/opensearch.yml
     regexp: '^node\.name:'
     line: "node.name: wazuh-indexer"
+  notify: Riavvia wazuh-indexer
+
+- name: Configura il nodo singolo dell'Indexer
+  ansible.builtin.lineinfile:
+    path: /etc/wazuh-indexer/opensearch.yml
+    regexp: '^discovery\.type:'
+    line: "discovery.type: single-node"
   notify: Riavvia wazuh-indexer
 
 - name: Configura le informazioni dei nodi dell'Indexer
