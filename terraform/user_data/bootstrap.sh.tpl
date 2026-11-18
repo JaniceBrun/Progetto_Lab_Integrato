@@ -17,6 +17,12 @@ install -m 0640 /dev/null /var/log/ansible-pull.log
 cat > /usr/local/bin/ansible-pull-lab <<'RUNNER'
 #!/bin/bash
 set -uo pipefail
+
+WAZUH_MANAGER_IP='${ wazuh_manager_ip }'
+if [ '${ playbook }' = 'wazuh.yml' ]; then
+  WAZUH_MANAGER_IP="$(hostname -I | awk '{print $1}')"
+fi
+
 exec /usr/bin/ansible-pull \
   -U '${ repo_url }' \
   -C '${ repo_branch }' \
@@ -25,7 +31,7 @@ exec /usr/bin/ansible-pull \
   -c local \
   --purge \
   ansible/${ playbook } \
-  -e 'wazuh_manager_ip=${ wazuh_manager_ip }' \
+  -e "wazuh_manager_ip=$WAZUH_MANAGER_IP" \
   >> /var/log/ansible-pull.log 2>&1
 RUNNER
 chmod 0750 /usr/local/bin/ansible-pull-lab
