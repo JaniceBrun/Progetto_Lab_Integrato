@@ -31,6 +31,7 @@ resource "aws_instance" "this" {
   key_name                    = var.key_name != "" ? var.key_name : null
   associate_public_ip_address = var.associate_public_ip
   user_data                   = var.user_data != "" ? var.user_data : null
+  private_ip                  = var.private_ip
 
   root_block_device {
     volume_type           = "gp2"
@@ -45,6 +46,6 @@ resource "aws_instance" "this" {
   })
 
   lifecycle {
-    ignore_changes = [ami, user_data]
+    ignore_changes = [ami]
   }
 }

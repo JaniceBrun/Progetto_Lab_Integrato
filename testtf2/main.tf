@@ -8,49 +8,19 @@ locals {
     ManagedBy   = "Terraform"
   }
 
-  waf_userdata = <<-EOF
-    #!/bin/bash
-    # --- Chiavi SSH aggiuntive ---
-    # Infrastruttura (janice.brun) - NON rimuovere
-    # echo "ssh-ed25519 AAAA...chiave-janice" >> /home/ubuntu/.ssh/authorized_keys
-    # Utente 1 (sara.progetto)
-    echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHYfUpoFu9qKnWWakZSRPCL7XOkrbiZZURXleIcc0yJw sara.progetto" >> /home/ubuntu/.ssh/authorized_keys
-    chmod 600 /home/ubuntu/.ssh/authorized_keys
-    # Utente 2 (marco_progettolab)
-    echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIANI89MdEkKMcZYadmcCQ9YJEEAPXCb8+QjChd7d4GmP marco_progettolab" >> /home/ubuntu/.ssh/authorized_keys
-    # Utente 3 (nome.cognome)
-    # echo "ssh-ed25519 AAAA...chiave-utente3" >> /home/ubuntu/.ssh/authorized_keys
-    # Utente 4 (nome.cognome)
-    # echo "ssh-ed25519 AAAA...chiave-utente4" >> /home/ubuntu/.ssh/authorized_keys
-    # Utente 5 (nome.cognome)
-    # echo "ssh-ed25519 AAAA...chiave-utente5" >> /home/ubuntu/.ssh/authorized_keys
-    # Utente 6 (nome.cognome)
-    # echo "ssh-ed25519 AAAA...chiave-utente6" >> /home/ubuntu/.ssh/authorized_keys
-    apt-get update -y
-    apt-get install -y ansible git
-  EOF
+  waf_userdata = templatefile("${path.module}/../terraform/user_data/bootstrap.sh.tpl", {
+    repo_url         = "https://github.com/JaniceBrun/Progetto_Lab_Integrato.git"
+    repo_branch      = "main"
+    playbook         = "waf.yml"
+    wazuh_manager_ip = "10.0.2.10"
+  })
 
-  wazuh_userdata = <<-EOF
-    #!/bin/bash
-    # --- Chiavi SSH aggiuntive ---
-    # Infrastruttura (janice.brun) - NON rimuovere
-    # echo "ssh-ed25519 AAAA...chiave-janice" >> /home/ubuntu/.ssh/authorized_keys
-    # Utente 1 (sara.progetto)
-    echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHYfUpoFu9qKnWWakZSRPCL7XOkrbiZZURXleIcc0yJw sara.progetto" >> /home/ubuntu/.ssh/authorized_keys
-    chmod 600 /home/ubuntu/.ssh/authorized_keys
-    # Utente 2 (marco_progettolab)
-    echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIANI89MdEkKMcZYadmcCQ9YJEEAPXCb8+QjChd7d4GmP marco_progettolab" >> /home/ubuntu/.ssh/authorized_keys
-    # Utente 3 (nome.cognome)
-    # echo "ssh-ed25519 AAAA...chiave-utente3" >> /home/ubuntu/.ssh/authorized_keys
-    # Utente 4 (nome.cognome)
-    # echo "ssh-ed25519 AAAA...chiave-utente4" >> /home/ubuntu/.ssh/authorized_keys
-    # Utente 5 (nome.cognome)
-    # echo "ssh-ed25519 AAAA...chiave-utente5" >> /home/ubuntu/.ssh/authorized_keys
-    # Utente 6 (nome.cognome)
-    # echo "ssh-ed25519 AAAA...chiave-utente6" >> /home/ubuntu/.ssh/authorized_keys
-    apt-get update -y
-    apt-get install -y ansible git
-  EOF
+  wazuh_userdata = templatefile("${path.module}/../terraform/user_data/bootstrap.sh.tpl", {
+    repo_url         = "https://github.com/JaniceBrun/Progetto_Lab_Integrato.git"
+    repo_branch      = "main"
+    playbook         = "wazuh.yml"
+    wazuh_manager_ip = "10.0.2.10"
+  })
 
   bastion_userdata = <<-EOF
     #!/bin/bash
@@ -74,27 +44,12 @@ locals {
     apt-get install -y ansible git
   EOF
 
-  juice_userdata = <<-EOF
-    #!/bin/bash
-    # --- Chiavi SSH aggiuntive ---
-    # Infrastruttura (janice.brun) - NON rimuovere
-    # echo "ssh-ed25519 AAAA...chiave-janice" >> /home/ubuntu/.ssh/authorized_keys
-    # Utente 1 (sara.progetto)
-    echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHYfUpoFu9qKnWWakZSRPCL7XOkrbiZZURXleIcc0yJw sara.progetto" >> /home/ubuntu/.ssh/authorized_keys
-    chmod 600 /home/ubuntu/.ssh/authorized_keys
-    # Utente 2 (marco_progettolab)
-    echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIANI89MdEkKMcZYadmcCQ9YJEEAPXCb8+QjChd7d4GmP marco_progettolab" >> /home/ubuntu/.ssh/authorized_keys
-    # Utente 3 (nome.cognome)
-    # echo "ssh-ed25519 AAAA...chiave-utente3" >> /home/ubuntu/.ssh/authorized_keys
-    # Utente 4 (nome.cognome)
-    # echo "ssh-ed25519 AAAA...chiave-utente4" >> /home/ubuntu/.ssh/authorized_keys
-    # Utente 5 (nome.cognome)
-    # echo "ssh-ed25519 AAAA...chiave-utente5" >> /home/ubuntu/.ssh/authorized_keys
-    # Utente 6 (nome.cognome)
-    # echo "ssh-ed25519 AAAA...chiave-utente6" >> /home/ubuntu/.ssh/authorized_keys
-    apt-get update -y
-    apt-get install -y ansible git
-  EOF
+  juice_userdata = templatefile("${path.module}/../terraform/user_data/bootstrap.sh.tpl", {
+    repo_url         = "https://github.com/JaniceBrun/Progetto_Lab_Integrato.git"
+    repo_branch      = "main"
+    playbook         = "juiceshop.yml"
+    wazuh_manager_ip = "10.0.2.10"
+  })
 }
 
 module "network" {
@@ -160,6 +115,7 @@ module "wazuh" {
   key_name            = var.key_name
   lab_role_name       = var.lab_role_name
   associate_public_ip = false
+  private_ip          = "10.0.2.10"
   user_data           = local.wazuh_userdata
   tags                = local.tags
 }
@@ -199,58 +155,4 @@ resource "aws_eip" "bastion" {
   domain     = "vpc"
   depends_on = [module.network]
   tags       = merge(local.tags, { Name = "${local.name_prefix}-bastion-eip" })
-}
-
-resource "null_resource" "ansible_inventory" {
-  triggers = {
-    bastion_ip  = aws_eip.bastion.public_ip
-    waf_ip      = aws_eip.waf.public_ip
-    juice_ip    = aws_eip.juice.public_ip
-    wazuh_ip    = module.wazuh.private_ip
-  }
-
-  provisioner "local-exec" {
-    command = <<-CMD
-      echo "# Generato automaticamente da terraform apply" > ${path.module}/ansible/inventory/hosts.ini
-      echo "# NON modificare manualmente" >> ${path.module}/ansible/inventory/hosts.ini
-      echo "" >> ${path.module}/ansible/inventory/hosts.ini
-      echo "[wazuh]" >> ${path.module}/ansible/inventory/hosts.ini
-      echo "wazuh ansible_host=${module.wazuh.private_ip}" >> ${path.module}/ansible/inventory/hosts.ini
-      echo "" >> ${path.module}/ansible/inventory/hosts.ini
-      echo "[waf]" >> ${path.module}/ansible/inventory/hosts.ini
-      echo "waf ansible_host=${aws_eip.waf.public_ip}" >> ${path.module}/ansible/inventory/hosts.ini
-      echo "" >> ${path.module}/ansible/inventory/hosts.ini
-      echo "[juice]" >> ${path.module}/ansible/inventory/hosts.ini
-      echo "juice ansible_host=${aws_eip.juice.public_ip}" >> ${path.module}/ansible/inventory/hosts.ini
-      echo "" >> ${path.module}/ansible/inventory/hosts.ini
-      echo "[waf:vars]" >> ${path.module}/ansible/inventory/hosts.ini
-      echo "ansible_ssh_common_args='-o ProxyJump=ubuntu@${aws_eip.bastion.public_ip}'" >> ${path.module}/ansible/inventory/hosts.ini
-      echo "" >> ${path.module}/ansible/inventory/hosts.ini
-      echo "[wazuh:vars]" >> ${path.module}/ansible/inventory/hosts.ini
-      echo "ansible_ssh_common_args='-o ProxyJump=ubuntu@${aws_eip.bastion.public_ip}'" >> ${path.module}/ansible/inventory/hosts.ini
-    CMD
-  }
-
-  provisioner "local-exec" {
-    command = <<-CMD
-      echo "# Generato automaticamente da terraform apply" > ${path.module}/ansible/group_vars/all.yml
-      echo "# NON modificare manualmente" >> ${path.module}/ansible/group_vars/all.yml
-      echo "" >> ${path.module}/ansible/group_vars/all.yml
-      echo "wazuh_version: \"4.11\"" >> ${path.module}/ansible/group_vars/all.yml
-      echo "wazuh_agent_version: \"4.11.0-1\"" >> ${path.module}/ansible/group_vars/all.yml
-      echo "" >> ${path.module}/ansible/group_vars/all.yml
-      echo "juiceshop_ip: \"${module.juice.private_ip}\"" >> ${path.module}/ansible/group_vars/all.yml
-      echo "wazuh_manager_ip: \"${module.wazuh.private_ip}\"" >> ${path.module}/ansible/group_vars/all.yml
-      echo "" >> ${path.module}/ansible/group_vars/all.yml
-      echo "modsec_engine: \"On\"" >> ${path.module}/ansible/group_vars/all.yml
-    CMD
-  }
-
-  depends_on = [
-    aws_eip.bastion,
-    aws_eip.waf,
-    aws_eip.juice,
-    module.wazuh,
-    module.juice,
-  ]
 }

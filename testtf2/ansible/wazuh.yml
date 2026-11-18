@@ -1,0 +1,9 @@
+---
+# Eseguito dalla VM Wazuh tramite ansible-pull.
+# Installa Manager, Indexer e Dashboard all-in-one.
+- name: Configura Wazuh all-in-one
+  hosts: localhost
+  connection: local
+  become: true
+  roles:
+    - wazuh

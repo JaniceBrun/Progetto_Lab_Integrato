@@ -22,3 +22,92 @@
     name: wazuh-agent
     enabled: true
     state: started
+
+- name: Importa repository APT Wazuh per il ruolo agente
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/wazuh/tasks/repo.yml"
+
+- name: Attendi che il Manager Wazuh accetti registrazioni
+  ansible.builtin.wait_for:
+    host: "{{ wazuh_manager_ip }}"
+    port: 1515
+    timeout: 600
+    state: started
+  register: wazuh_manager_wait
+  ignore_errors: true
+
+- name: Interrompi pulizia se il Manager Wazuh non è pronto
+  ansible.builtin.fail:
+    msg: "Manager Wazuh {{ wazuh_manager_ip }}:1515 non ancora raggiungibile; il timer ansible-pull riproverà."
+  when: wazuh_manager_wait is failed
+
+- name: Installa agente Wazuh con versione fissata
+  ansible.builtin.apt:
+    name: "wazuh-agent={{ wazuh_version }}"
+    state: present
+    update_cache: true
+  environment:
+    WAZUH_MANAGER: "{{ wazuh_manager_ip }}"
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Verifica configurazione principale dell'agente Wazuh
+  ansible.builtin.stat:
+    path: /var/ossec/etc/ossec.conf
+  register: wazuh_agent_config
+
+- name: Imposta server del Manager nella configurazione agente
+  ansible.builtin.lineinfile:
+    path: /var/ossec/etc/ossec.conf
+    regexp: '<address>.*</address>'
+    line: "      <address>{{ wazuh_manager_ip }}</address>"
+  when:
+    - wazuh_agent_config.stat.exists
+    - wazuh_agent_role in ['waf', 'juiceshop']
+  notify: Riavvia wazuh-agent
+
+- name: Configura log Nginx e ModSecurity per VM WAF
+  ansible.builtin.blockinfile:
+    path: /var/ossec/etc/ossec.conf
+    marker: "<!-- {mark} ANSIBLE WAZUH WAF LOGS -->"
+    block: |
+      <localfile>
+        <log_format>syslog</log_format>
+        <location>/var/log/nginx/access.log</location>
+      </localfile>
+      <localfile>
+        <log_format>syslog</log_format>
+        <location>/var/log/nginx/error.log</location>
+      </localfile>
+      <localfile>
+        <log_format>json</log_format>
+        <location>/var/log/modsec_audit.log</location>
+      </localfile>
+    insertbefore: '</ossec_config>'
+  when: wazuh_agent_role == 'waf'
+  notify: Riavvia wazuh-agent
+
+- name: Configura log Docker JSON per VM Juice Shop
+  ansible.builtin.blockinfile:
+    path: /var/ossec/etc/ossec.conf
+    marker: "<!-- {mark} ANSIBLE WAZUH JUICE SHOP LOGS -->"
+    block: |
+      <localfile>
+        <log_format>json</log_format>
+        <location>/var/lib/docker/containers/*/*-json.log</location>
+      </localfile>
+    insertbefore: '</ossec_config>'
+  when: wazuh_agent_role == 'juiceshop'
+  notify: Riavvia wazuh-agent
+
+- name: Imposta permessi della configurazione agente
+  ansible.builtin.file:
+    path: /var/ossec/etc/ossec.conf
+    owner: root
+    group: wazuh
+    mode: "0640"
+
+- name: Abilita e avvia agente Wazuh
+  ansible.builtin.systemd_service:
+    name: wazuh-agent
+    enabled: true
+    state: started
+    daemon_reload: true

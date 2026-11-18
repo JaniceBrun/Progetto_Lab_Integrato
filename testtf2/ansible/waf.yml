@@ -1,0 +1,14 @@
+---
+# Eseguito dalla VM WAF tramite ansible-pull.
+# Per ora installa solo l'agent Wazuh.
+# Aggiungere il ruolo waf (nginx + ModSecurity + OWASP CRS) nella sezione roles quando pronto.
+- name: Configura VM WAF
+  hosts: localhost
+  connection: local
+  become: true
+  vars:
+    wazuh_agent_role: "waf"
+  roles:
+    # --- aggiungere qui il ruolo waf quando pronto ---
+    # - waf
+    - wazuh_agent

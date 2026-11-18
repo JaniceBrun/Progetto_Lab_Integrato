@@ -1,17 +1,246 @@
 ---
-- name: Installa curl
-  apt:
-    name: curl
+# Installazione Wazuh all-in-one usando i pacchetti ufficiali. Questa scelta
+# mantiene certificati, cluster e pacchetti esplicitamente controllabili e
+# evita il reinstallatore interattivo quando ansible-pull viene ripetuto.
+
+- name: Importa repository APT Wazuh
+  ansible.builtin.include_tasks: repo.yml
+
+- name: Crea directory temporanea per i certificati Wazuh
+  ansible.builtin.file:
+    path: /tmp/wazuh-certs
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Scarica lo strumento ufficiale per i certificati Wazuh
+  ansible.builtin.get_url:
+    url: https://packages.wazuh.com/4.14/wazuh-certs-tool.sh
+    dest: /tmp/wazuh-certs/wazuh-certs-tool.sh
+    mode: "0750"
+    force: false
+
+- name: Installa configurazione dei certificati Wazuh
+  ansible.builtin.template:
+    src: config.yml.j2
+    dest: /tmp/wazuh-certs/config.yml
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Genera i certificati Wazuh una sola volta
+  ansible.builtin.command:
+    cmd: bash /tmp/wazuh-certs/wazuh-certs-tool.sh -A
+    chdir: /tmp/wazuh-certs
+    creates: /tmp/wazuh-certs/wazuh-certificates
+  register: wazuh_certs_generation
+  changed_when: wazuh_certs_generation.rc == 0
+
+- name: Installa pacchetti Wazuh con versione fissata
+  ansible.builtin.apt:
+    name:
+      - "wazuh-indexer={{ wazuh_version }}"
+      - "wazuh-manager={{ wazuh_version }}"
+      - "wazuh-dashboard={{ wazuh_version }}"
     state: present
     update_cache: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
 
-- name: Scarica script di installazione Wazuh
-  get_url:
-    url: "https://packages.wazuh.com/{{ wazuh_version }}/wazuh-install.sh"
-    dest: /tmp/wazuh-install.sh
-    mode: "0755"
+- name: Crea directory dei certificati dell'Indexer
+  ansible.builtin.file:
+    path: /etc/wazuh-indexer/certs
+    state: directory
+    owner: root
+    group: wazuh-indexer
+    mode: "0750"
 
-- name: Esegui installazione Wazuh all-in-one
-  command: bash /tmp/wazuh-install.sh -a -i
-  args:
-    creates: /var/ossec/bin/wazuh-control
+- name: Distribuisci certificati TLS dell'Indexer
+  ansible.builtin.copy:
+    src: "/tmp/wazuh-certs/wazuh-certificates/{{ item }}"
+    dest: "/etc/wazuh-indexer/certs/{{ item }}"
+    remote_src: true
+    owner: root
+    group: wazuh-indexer
+    mode: "0640"
+  loop:
+    - wazuh-indexer.pem
+    - wazuh-indexer-key.pem
+    - root-ca.pem
+  notify: Riavvia wazuh-indexer
+
+- name: Configura il nome del nodo dell'Indexer
+  ansible.builtin.lineinfile:
+    path: /etc/wazuh-indexer/opensearch.yml
+    regexp: '^node\.name:'
+    line: "node.name: wazuh-indexer"
+  notify: Riavvia wazuh-indexer
+
+- name: Configura le informazioni dei nodi dell'Indexer
+  ansible.builtin.lineinfile:
+    path: /etc/wazuh-indexer/opensearch.yml
+    regexp: '^network\.host:'
+    line: "network.host: {{ wazuh_manager_ip }}"
+  notify: Riavvia wazuh-indexer
+
+- name: Imposta heap iniziale JVM dell'Indexer a 4g
+  ansible.builtin.lineinfile:
+    path: /etc/wazuh-indexer/jvm.options
+    regexp: '^-Xms'
+    line: '-Xms4g'
+  notify: Riavvia wazuh-indexer
+
+- name: Imposta heap massimo JVM dell'Indexer a 4g
+  ansible.builtin.lineinfile:
+    path: /etc/wazuh-indexer/jvm.options
+    regexp: '^-Xmx'
+    line: '-Xmx4g'
+  notify: Riavvia wazuh-indexer
+
+- name: Abilita e avvia wazuh-indexer
+  ansible.builtin.systemd_service:
+    name: wazuh-indexer
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Attendi che l'Indexer sia pronto sulla porta 9200
+  ansible.builtin.wait_for:
+    host: "127.0.0.1"
+    port: 9200
+    timeout: 300
+
+- name: Verifica se il cluster dell'Indexer è già stato inizializzato
+  ansible.builtin.stat:
+    path: /var/lib/wazuh-indexer/.ansible_security_initialized
+  register: wazuh_security_marker
+
+- name: Inizializza la sicurezza dell'Indexer una sola volta
+  ansible.builtin.command:
+    cmd: /usr/share/wazuh-indexer/bin/indexer-security-init.sh
+  when: not wazuh_security_marker.stat.exists
+  register: wazuh_security_init
+  changed_when: wazuh_security_init.rc == 0
+
+- name: Crea marker dell'inizializzazione della sicurezza
+  ansible.builtin.file:
+    path: /var/lib/wazuh-indexer/.ansible_security_initialized
+    state: touch
+    owner: root
+    group: wazuh-indexer
+    mode: "0600"
+  when: not wazuh_security_marker.stat.exists
+
+- name: Crea directory dei certificati del Manager
+  ansible.builtin.file:
+    path: /etc/wazuh-manager/certs
+    state: directory
+    owner: root
+    group: wazuh
+    mode: "0750"
+
+- name: Distribuisci certificati TLS del Manager
+  ansible.builtin.copy:
+    src: "/tmp/wazuh-certs/wazuh-certificates/{{ item.src }}"
+    dest: "/etc/wazuh-manager/certs/{{ item.dest }}"
+    remote_src: true
+    owner: root
+    group: wazuh
+    mode: "0640"
+  loop:
+    - { src: 'wazuh-manager.pem', dest: 'wazuh-manager.pem' }
+    - { src: 'wazuh-manager-key.pem', dest: 'wazuh-manager-key.pem' }
+    - { src: 'root-ca.pem', dest: 'root-ca.pem' }
+  notify: Riavvia wazuh-manager
+
+- name: Abilita e avvia wazuh-manager
+  ansible.builtin.systemd_service:
+    name: wazuh-manager
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Crea directory dei certificati della Dashboard
+  ansible.builtin.file:
+    path: /etc/wazuh-dashboard/certs
+    state: directory
+    owner: root
+    group: wazuh-dashboard
+    mode: "0750"
+
+- name: Distribuisci certificati TLS della Dashboard
+  ansible.builtin.copy:
+    src: "/tmp/wazuh-certs/wazuh-certificates/{{ item.src }}"
+    dest: "/etc/wazuh-dashboard/certs/{{ item.dest }}"
+    remote_src: true
+    owner: root
+    group: wazuh-dashboard
+    mode: "0640"
+  loop:
+    - { src: 'wazuh-dashboard.pem', dest: 'wazuh-dashboard.pem' }
+    - { src: 'wazuh-dashboard-key.pem', dest: 'wazuh-dashboard-key.pem' }
+    - { src: 'root-ca.pem', dest: 'root-ca.pem' }
+  notify: Riavvia wazuh-dashboard
+
+- name: Abilita e avvia wazuh-dashboard
+  ansible.builtin.systemd_service:
+    name: wazuh-dashboard
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Attendi porta agente 1514
+  ansible.builtin.wait_for:
+    host: "127.0.0.1"
+    port: 1514
+    timeout: 300
+
+- name: Attendi porta registrazione agente 1515
+  ansible.builtin.wait_for:
+    host: "127.0.0.1"
+    port: 1515
+    timeout: 300
+
+- name: Attendi API Indexer 9200
+  ansible.builtin.wait_for:
+    host: "127.0.0.1"
+    port: 9200
+    timeout: 300
+
+- name: Attendi Dashboard HTTPS 443
+  ansible.builtin.wait_for:
+    host: "127.0.0.1"
+    port: 443
+    timeout: 300
+
+- name: Crea directory della password amministratore locale Wazuh
+  ansible.builtin.file:
+    path: /etc/wazuh-dashboard
+    state: directory
+    owner: root
+    group: wazuh-dashboard
+    mode: "0700"
+
+- name: Verifica se esiste la password amministratore locale Wazuh
+  ansible.builtin.stat:
+    path: /etc/wazuh-dashboard/.wazuh_admin_pass
+  register: wazuh_admin_password_file
+
+- name: Genera password amministratore locale Wazuh una sola volta
+  ansible.builtin.copy:
+    dest: /etc/wazuh-dashboard/.wazuh_admin_pass
+    content: "{{ lookup('password', '/dev/null', length=32, chars='ascii_letters,digits') }}\n"
+    owner: root
+    group: wazuh-dashboard
+    mode: "0600"
+    force: false
+  when: not wazuh_admin_password_file.stat.exists
+  no_log: true
+
+- name: Imposta permessi alla password amministratore locale Wazuh
+  ansible.builtin.file:
+    path: /etc/wazuh-dashboard/.wazuh_admin_pass
+    owner: root
+    group: wazuh-dashboard
+    mode: "0600"

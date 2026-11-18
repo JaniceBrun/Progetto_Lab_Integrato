@@ -46,3 +46,9 @@ variable "tags" {
   type    = map(string)
   default = {}
 }
+
+variable "private_ip" {
+  description = "Indirizzo IPv4 privato fisso; null usa l'assegnazione DHCP VPC"
+  type        = string
+  default     = null
+}

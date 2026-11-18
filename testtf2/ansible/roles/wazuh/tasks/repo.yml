@@ -1,0 +1,36 @@
+---
+# Task file condiviso: aggiunge il repository APT Wazuh.
+# Incluso da roles/wazuh/tasks/main.yml e roles/wazuh_agent/tasks/main.yml.
+
+- name: Installa dipendenze GPG
+  ansible.builtin.apt:
+    name:
+      - curl
+      - gnupg
+    state: present
+    update_cache: true
+
+- name: Scarica chiave GPG Wazuh
+  ansible.builtin.get_url:
+    url: https://packages.wazuh.com/key/GPG-KEY-WAZUH
+    dest: /tmp/GPG-KEY-WAZUH
+    mode: "0644"
+
+- name: Decodifica chiave GPG Wazuh
+  ansible.builtin.command:
+    cmd: gpg --batch --yes --dearmor -o /usr/share/keyrings/wazuh.gpg /tmp/GPG-KEY-WAZUH
+    creates: /usr/share/keyrings/wazuh.gpg
+
+- name: Imposta permessi chiave GPG
+  ansible.builtin.file:
+    path: /usr/share/keyrings/wazuh.gpg
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Aggiungi repository APT Wazuh
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main"
+    filename: wazuh
+    state: present
+    update_cache: true

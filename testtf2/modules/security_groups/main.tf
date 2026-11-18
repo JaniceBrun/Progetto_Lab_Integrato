@@ -28,18 +28,18 @@ resource "aws_security_group" "bastion" {
 
 locals {
   ingress_internet = {
-    juice_22   = { sg = aws_security_group.juice.id,   port = 22,   desc = "SSH" }
-    juice_80   = { sg = aws_security_group.juice.id,   port = 80,   desc = "HTTP" }
-    juice_443  = { sg = aws_security_group.juice.id,   port = 443,  desc = "HTTPS" }
-    juice_3000 = { sg = aws_security_group.juice.id,   port = 3000, desc = "Juice Shop UI" }
-    waf_22     = { sg = aws_security_group.waf.id,     port = 22,   desc = "SSH" }
-    waf_80     = { sg = aws_security_group.waf.id,     port = 80,   desc = "HTTP" }
-    waf_443    = { sg = aws_security_group.waf.id,     port = 443,  desc = "HTTPS" }
-    wazuh_80   = { sg = aws_security_group.wazuh.id,   port = 80,   desc = "HTTP" }
-    wazuh_443  = { sg = aws_security_group.wazuh.id,   port = 443,  desc = "Wazuh dashboard" }
-    wazuh_1514 = { sg = aws_security_group.wazuh.id,   port = 1514, desc = "Wazuh agent" }
-    wazuh_1515 = { sg = aws_security_group.wazuh.id,   port = 1515, desc = "Wazuh cluster" }
-    bastion_22 = { sg = aws_security_group.bastion.id, port = 22,   desc = "SSH da internet" }
+    juice_22   = { sg = aws_security_group.juice.id, port = 22, desc = "SSH" }
+    juice_80   = { sg = aws_security_group.juice.id, port = 80, desc = "HTTP" }
+    juice_443  = { sg = aws_security_group.juice.id, port = 443, desc = "HTTPS" }
+    juice_3000 = { sg = aws_security_group.juice.id, port = 3000, desc = "Juice Shop UI" }
+    waf_22     = { sg = aws_security_group.waf.id, port = 22, desc = "SSH" }
+    waf_80     = { sg = aws_security_group.waf.id, port = 80, desc = "HTTP" }
+    waf_443    = { sg = aws_security_group.waf.id, port = 443, desc = "HTTPS" }
+    wazuh_80   = { sg = aws_security_group.wazuh.id, port = 80, desc = "HTTP" }
+    wazuh_443  = { sg = aws_security_group.wazuh.id, port = 443, desc = "Wazuh dashboard" }
+    wazuh_1514 = { sg = aws_security_group.wazuh.id, port = 1514, desc = "Wazuh agent" }
+    wazuh_1515 = { sg = aws_security_group.wazuh.id, port = 1515, desc = "Wazuh cluster" }
+    bastion_22 = { sg = aws_security_group.bastion.id, port = 22, desc = "SSH da internet" }
   }
 
   egress_all = {

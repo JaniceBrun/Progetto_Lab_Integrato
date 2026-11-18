@@ -1,0 +1,36 @@
+plugin: amazon.aws.aws_ec2
+
+regions:
+  - us-east-1
+
+filters:
+  tag:Project: labtest
+  tag:ManagedBy: Terraform
+  instance-state-name: running
+
+keyed_groups:
+  - key: tags.Role
+    prefix: ""
+    separator: ""
+
+compose:
+  # VM pubbliche: usa IP pubblico
+  ansible_host: public_ip_address
+
+  # Wazuh è in subnet privata: usa IP privato + ProxyJump dal bastion
+  ansible_host: >-
+    private_ip_address if tags.Role == 'wazuh'
+    else public_ip_address
+  ansible_ssh_common_args: >-
+    '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ProxyJump=ubuntu@' + hostvars[groups['bastion'][0]]['public_ip_address']
+    if tags.Role == 'wazuh'
+    else '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+
+hostnames:
+  - tag:Name
+
+groups:
+  wazuh:   "'wazuh' in tags.Role"
+  waf:     "'waf' in tags.Role"
+  juice:   "'juice' in tags.Role"
+  bastion: "'bastion' in tags.Role"
