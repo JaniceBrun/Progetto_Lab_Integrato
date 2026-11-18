@@ -147,12 +147,6 @@
       ansible.builtin.fail:
         msg: "wazuh-indexer non è diventato disponibile sulla porta 9200."
 
-- name: Attendi che l'Indexer sia pronto sulla porta 9200
-  ansible.builtin.wait_for:
-    host: "127.0.0.1"
-    port: 9200
-    timeout: 300
-
 - name: Verifica se il cluster dell'Indexer è già stato inizializzato
   ansible.builtin.stat:
     path: /var/lib/wazuh-indexer/.ansible_security_initialized
