@@ -18,14 +18,14 @@ cat > /usr/local/bin/ansible-pull-lab <<'RUNNER'
 #!/bin/bash
 set -uo pipefail
 exec /usr/bin/ansible-pull \
-  -U '{{ repo_url }}' \
-  -C '{{ repo_branch }}' \
+  -U '${ repo_url }' \
+  -C '${ repo_branch }' \
   -d /opt/ansible-pull \
   -i localhost, \
   -c local \
   --purge \
-  ansible/{{ playbook }} \
-  -e 'wazuh_manager_ip={{ wazuh_manager_ip }}' \
+  ansible/${ playbook } \
+  -e 'wazuh_manager_ip=${ wazuh_manager_ip }' \
   >> /var/log/ansible-pull.log 2>&1
 RUNNER
 chmod 0750 /usr/local/bin/ansible-pull-lab
@@ -60,3 +60,18 @@ systemctl enable --now ansible-pull-lab.timer
 
 # Primo tentativo immediato: il timer riproverà anche dopo un errore.
 /usr/local/bin/ansible-pull-lab || true
+
+# Chiavi SSH condivise con Sara e Marco su tutte le VM.
+mkdir -p /home/ubuntu/.ssh
+chmod 700 /home/ubuntu/.ssh
+chown ubuntu:ubuntu /home/ubuntu/.ssh
+
+touch /home/ubuntu/.ssh/authorized_keys
+chmod 600 /home/ubuntu/.ssh/authorized_keys
+chown ubuntu:ubuntu /home/ubuntu/.ssh/authorized_keys
+
+grep -qxF 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHYfUpoFu9qKnWWakZSRPCL7XOkrbiZZURXleIcc0yJw sara.progetto' /home/ubuntu/.ssh/authorized_keys || \
+  echo 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHYfUpoFu9qKnWWakZSRPCL7XOkrbiZZURXleIcc0yJw sara.progetto' >> /home/ubuntu/.ssh/authorized_keys
+
+grep -qxF 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIANI89MdEkKMcZYadmcCQ9YJEEAPXCb8+QjChd7d4GmP marco_progettolab' /home/ubuntu/.ssh/authorized_keys || \
+  echo 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIANI89MdEkKMcZYadmcCQ9YJEEAPXCb8+QjChd7d4GmP marco_progettolab' >> /home/ubuntu/.ssh/authorized_keys

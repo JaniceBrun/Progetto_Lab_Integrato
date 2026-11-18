@@ -24,16 +24,23 @@ locals {
 
   bastion_userdata = <<-EOF
     #!/bin/bash
-    # --- Chiavi SSH aggiuntive ---
-    # Infrastruttura (janice.brun) - NON rimuovere
-    # echo "ssh-ed25519 AAAA...chiave-janice" >> /home/ubuntu/.ssh/authorized_keys
-    # Utente 1 (sara.progetto)
-    echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHYfUpoFu9qKnWWakZSRPCL7XOkrbiZZURXleIcc0yJw sara.progetto" >> /home/ubuntu/.ssh/authorized_keys
+    set -Eeuo pipefail
+
+    export DEBIAN_FRONTEND=noninteractive
+
+    mkdir -p /home/ubuntu/.ssh
+    chmod 700 /home/ubuntu/.ssh
+    chown ubuntu:ubuntu /home/ubuntu/.ssh
+    touch /home/ubuntu/.ssh/authorized_keys
     chmod 600 /home/ubuntu/.ssh/authorized_keys
-    # Utente 2 (marco_progettolab)
-    echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIANI89MdEkKMcZYadmcCQ9YJEEAPXCb8+QjChd7d4GmP marco_progettolab" >> /home/ubuntu/.ssh/authorized_keys
-    # Utente 3 (nome.cognome)
-    # echo "ssh-ed25519 AAAA...chiave-utente3" >> /home/ubuntu/.ssh/authorized_keys
+    chown ubuntu:ubuntu /home/ubuntu/.ssh/authorized_keys
+
+    grep -qxF 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHYfUpoFu9qKnWWakZSRPCL7XOkrbiZZURXleIcc0yJw sara.progetto' /home/ubuntu/.ssh/authorized_keys || \\
+      echo 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHYfUpoFu9qKnWWakZSRPCL7XOkrbiZZURXleIcc0yJw sara.progetto' >> /home/ubuntu/.ssh/authorized_keys
+
+    grep -qxF 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIANI89MdEkKMcZYadmcCQ9YJEEAPXCb8+QjChd7d4GmP marco_progettolab' /home/ubuntu/.ssh/authorized_keys || \\
+      echo 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIANI89MdEkKMcZYadmcCQ9YJEEAPXCb8+QjChd7d4GmP marco_progettolab' >> /home/ubuntu/.ssh/authorized_keys
+
     apt-get update -y
     apt-get install -y ansible git
   EOF
