@@ -8,14 +8,14 @@ locals {
     ManagedBy   = "Terraform"
   }
 
-  waf_userdata = templatefile("${path.module}/../terraform/user_data/bootstrap.sh.tpl", {
+  waf_userdata = templatefile("${path.module}/user_data/bootstrap.sh.tpl", {
     repo_url         = "https://github.com/JaniceBrun/Progetto_Lab_Integrato.git"
     repo_branch      = "janice-synctest"
     playbook         = "waf.yml"
     wazuh_manager_ip = module.wazuh.private_ip
   })
 
-  wazuh_userdata = templatefile("${path.module}/../terraform/user_data/bootstrap.sh.tpl", {
+  wazuh_userdata = templatefile("${path.module}/user_data/bootstrap.sh.tpl", {
     repo_url         = "https://github.com/JaniceBrun/Progetto_Lab_Integrato.git"
     repo_branch      = "janice-synctest"
     playbook         = "wazuh.yml"
@@ -45,7 +45,7 @@ locals {
     apt-get install -y ansible git
   EOF
 
-  juice_userdata = templatefile("${path.module}/../terraform/user_data/bootstrap.sh.tpl", {
+  juice_userdata = templatefile("${path.module}/user_data/bootstrap.sh.tpl", {
     repo_url         = "https://github.com/JaniceBrun/Progetto_Lab_Integrato.git"
     repo_branch      = "janice-synctest"
     playbook         = "juiceshop.yml"
@@ -86,6 +86,8 @@ module "juice" {
   associate_public_ip = true
   user_data           = local.juice_userdata
   tags                = local.tags
+
+  depends_on = [module.network, module.security_groups]
 }
 
 module "waf" {
@@ -102,6 +104,8 @@ module "waf" {
   associate_public_ip = true
   user_data           = local.waf_userdata
   tags                = local.tags
+
+  depends_on = [module.network, module.security_groups]
 }
 
 module "wazuh" {
@@ -119,6 +123,8 @@ module "wazuh" {
   private_ip          = null
   user_data           = local.wazuh_userdata
   tags                = local.tags
+
+  depends_on = [module.network, module.security_groups]
 }
 
 module "bastion" {
@@ -135,6 +141,8 @@ module "bastion" {
   associate_public_ip = true
   user_data           = local.bastion_userdata
   tags                = local.tags
+
+  depends_on = [module.network, module.security_groups]
 }
 
 resource "aws_eip" "juice" {
