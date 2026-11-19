@@ -32,3 +32,27 @@
   systemd:
     name: ssh
     state: restarted
+
+- name: Crea directory SSH dell'utente ubuntu
+  file:
+    path: /home/ubuntu/.ssh
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: "0700"
+
+- name: Installa le chiavi SSH pubbliche condivise
+  authorized_key:
+    user: ubuntu
+    state: present
+    key: "{{ item }}"
+  loop:
+    - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHYfUpoFu9qKnWWakZSRPCL7XOkrbiZZURXleIcc0yJw sara.progetto"
+    - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIANI89MdEkKMcZYadmcCQ9YJEEAPXCb8+QjChd7d4GmP marco_progettolab"
+
+- name: Imposta i permessi di authorized_keys
+  file:
+    path: /home/ubuntu/.ssh/authorized_keys
+    owner: ubuntu
+    group: ubuntu
+    mode: "0600"

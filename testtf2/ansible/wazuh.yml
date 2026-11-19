@@ -6,4 +6,5 @@
   connection: local
   become: true
   roles:
+    - common
     - wazuh

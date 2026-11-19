@@ -7,5 +7,6 @@
   vars:
     wazuh_agent_role: "juiceshop"
   roles:
+    - common
     - juice
     - wazuh_agent
