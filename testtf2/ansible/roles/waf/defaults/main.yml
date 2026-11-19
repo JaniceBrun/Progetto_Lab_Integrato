@@ -1,0 +1,6 @@
+---
+# On = blocca gli attacchi; DetectionOnly = li registra soltanto.
+modsec_engine: "On"
+
+# Versione fissata del Core Rule Set OWASP (evita cambi a ogni ansible-pull).
+crs_version: "v4.0.0"

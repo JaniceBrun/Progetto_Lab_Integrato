@@ -10,4 +10,9 @@ SecAuditEngine RelevantOnly
 SecAuditLogRelevantStatus "^(?:5|4(?!04))"
 SecAuditLogParts ABIJDEFHZ
 SecAuditLogType Serial
+SecAuditLogFormat JSON
 SecAuditLog /var/log/modsec_audit.log
+
+# OWASP Core Rule Set
+Include /etc/nginx/modsecurity-crs/crs-setup.conf
+Include /etc/nginx/modsecurity-crs/rules/*.conf
