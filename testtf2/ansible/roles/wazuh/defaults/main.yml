@@ -1,3 +1,8 @@
 ---
 # Heap dell'Indexer ridotto per ridurre la memoria richiesta sulle VM da 4 GB.
 wazuh_indexer_heap: "1g"
+
+# Modalità di discovery dell'Indexer.
+wazuh_indexer_single_node: true
+wazuh_indexer_node_name: "wazuh-indexer"
+wazuh_indexer_network_host: "{{ wazuh_manager_ip }}"

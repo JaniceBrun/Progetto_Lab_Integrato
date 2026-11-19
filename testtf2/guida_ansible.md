@@ -290,3 +290,8 @@ Oppure:
 2. WAF e Juice Shop avviano il bootstrap e attendono la porta `1515` del Manager.
 3. Il timer ripete il pull ogni 15 minuti se una delle prime esecuzioni fallisce.
 4. Il tunnel SSH dal bastion rende disponibile la dashboard sul browser locale.
+
+sudo grep -nE '^(-Xms|-Xmx)' /etc/wazuh-indexer/jvm.options
+sudo ls -l /etc/wazuh-indexer/certs
+sudo systemctl status wazuh-indexer --no-pager -l
+sudo journalctl -u wazuh-indexer --no-pager -n 50
