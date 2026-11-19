@@ -21,6 +21,7 @@ cat > /usr/local/bin/ansible-pull-lab <<'RUNNER'
 set -uo pipefail
 
 WAZUH_MANAGER_IP='${ wazuh_manager_ip }'
+JUICESHOP_IP='${ juiceshop_ip }'
 if [ '${ playbook }' = 'wazuh.yml' ]; then
   WAZUH_MANAGER_IP="$(hostname -I | awk '{print $1}')"
 fi
@@ -35,6 +36,7 @@ exec flock -n /var/lock/ansible-pull-lab.lock /usr/bin/ansible-pull \
   -c local \
   testtf2/ansible/${ playbook } \
   -e "wazuh_manager_ip=$WAZUH_MANAGER_IP" \
+  -e "juiceshop_ip=$JUICESHOP_IP" \
   -e "wazuh_version=$WAZUH_VERSION" \
   >> /var/log/ansible-pull.log 2>&1
 RUNNER

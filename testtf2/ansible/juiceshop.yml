@@ -1,7 +1,5 @@
 ---
 # Eseguito dalla VM Juice Shop tramite ansible-pull.
-# Per ora installa solo l'agent Wazuh.
-# Aggiungere il ruolo juice (Docker + container + nginx) nella sezione roles quando pronto.
 - name: Configura VM Juice Shop
   hosts: localhost
   connection: local
@@ -9,6 +7,5 @@
   vars:
     wazuh_agent_role: "juiceshop"
   roles:
-    # --- aggiungere qui il ruolo juice quando pronto ---
-    # - juice
+    - juice
     - wazuh_agent

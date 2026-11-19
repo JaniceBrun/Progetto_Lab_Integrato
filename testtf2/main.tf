@@ -13,6 +13,7 @@ locals {
     repo_branch      = "janice-synctest"
     playbook         = "waf.yml"
     wazuh_manager_ip = module.wazuh.private_ip
+    juiceshop_ip     = module.juice.private_ip
   })
 
   wazuh_userdata = templatefile("${path.module}/user_data/bootstrap.sh.tpl", {
@@ -20,6 +21,7 @@ locals {
     repo_branch      = "janice-synctest"
     playbook         = "wazuh.yml"
     wazuh_manager_ip = ""
+    juiceshop_ip     = ""
   })
 
   bastion_userdata = <<-EOF
@@ -50,6 +52,7 @@ locals {
     repo_branch      = "janice-synctest"
     playbook         = "juiceshop.yml"
     wazuh_manager_ip = module.wazuh.private_ip
+    juiceshop_ip     = ""
   })
 }
 
