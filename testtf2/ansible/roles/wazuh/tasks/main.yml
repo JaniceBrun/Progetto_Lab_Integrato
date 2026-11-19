@@ -89,101 +89,24 @@
     - { src: 'admin-key.pem', dest: 'admin-key.pem' }
   notify: Riavvia wazuh-indexer
 
-- name: Configura il nome del cluster dell'Indexer
-  ansible.builtin.lineinfile:
-    path: /etc/wazuh-indexer/opensearch.yml
-    regexp: '^cluster\.name:'
-    line: "cluster.name: wazuh-cluster"
+- name: Installa configurazione completa dell'Indexer
+  ansible.builtin.template:
+    src: opensearch.yml.j2
+    dest: /etc/wazuh-indexer/opensearch.yml
+    owner: root
+    group: wazuh-indexer
+    mode: "0640"
   notify: Riavvia wazuh-indexer
 
-- name: Configura il nome del nodo dell'Indexer
-  ansible.builtin.lineinfile:
-    path: /etc/wazuh-indexer/opensearch.yml
-    regexp: '^node\.name:'
-    line: 'node.name: "{{ wazuh_indexer_node_name }}"'
-  notify: Riavvia wazuh-indexer
+- name: Installa supporto Python YAML
+  ansible.builtin.apt:
+    name: python3-yaml
+    state: present
 
-- name: Normalizza il compatibility flag dell'Indexer
-  ansible.builtin.lineinfile:
-    path: /etc/wazuh-indexer/opensearch.yml
-    regexp: '^compatibility\.override_main_response_version:.*'
-    line: "compatibility.override_main_response_version: true"
-  notify: Riavvia wazuh-indexer
-
-- name: Rimuovi il blocco cluster.initial_master_nodes dalla configurazione single-node
-  ansible.builtin.replace:
-    path: /etc/wazuh-indexer/opensearch.yml
-    regexp: '(?m)^cluster\.initial_master_nodes:\s*$\n(?:^[ \t]+.*$\n)*'
-    replace: ''
-  when: wazuh_indexer_single_node | bool
-  notify: Riavvia wazuh-indexer
-
-- name: Rimuovi la forma inline di cluster.initial_master_nodes dalla configurazione single-node
-  ansible.builtin.lineinfile:
-    path: /etc/wazuh-indexer/opensearch.yml
-    regexp: '^cluster\.initial_master_nodes:'
-    state: absent
-  when: wazuh_indexer_single_node | bool
-  notify: Riavvia wazuh-indexer
-
-- name: Rimuovi il blocco discovery.seed_hosts dalla configurazione single-node
-  ansible.builtin.replace:
-    path: /etc/wazuh-indexer/opensearch.yml
-    regexp: '(?m)^discovery\.seed_hosts:\s*$\n(?:^[ \t]+.*$\n)*'
-    replace: ''
-  when: wazuh_indexer_single_node | bool
-  notify: Riavvia wazuh-indexer
-
-- name: Rimuovi la forma inline di discovery.seed_hosts dalla configurazione single-node
-  ansible.builtin.lineinfile:
-    path: /etc/wazuh-indexer/opensearch.yml
-    regexp: '^discovery\.seed_hosts:'
-    state: absent
-  when: wazuh_indexer_single_node | bool
-  notify: Riavvia wazuh-indexer
-
-- name: Configura discovery.type in modalità single-node
-  ansible.builtin.lineinfile:
-    path: /etc/wazuh-indexer/opensearch.yml
-    regexp: '^discovery\.type:'
-    line: "discovery.type: single-node"
-  when: wazuh_indexer_single_node | bool
-  notify: Riavvia wazuh-indexer
-
-- name: Rimuovi discovery.type in modalità cluster
-  ansible.builtin.lineinfile:
-    path: /etc/wazuh-indexer/opensearch.yml
-    regexp: '^discovery\.type:'
-    state: absent
-  when: not (wazuh_indexer_single_node | bool)
-  notify: Riavvia wazuh-indexer
-
-- name: Configura cluster.initial_master_nodes in modalità cluster
-  ansible.builtin.blockinfile:
-    path: /etc/wazuh-indexer/opensearch.yml
-    marker: "# {mark} ANSIBLE MANAGED INITIAL MASTER NODES"
-    block: |-
-      cluster.initial_master_nodes:
-        - "{{ wazuh_indexer_node_name }}"
-  when: not (wazuh_indexer_single_node | bool)
-  notify: Riavvia wazuh-indexer
-
-- name: Configura discovery.seed_hosts in modalità cluster
-  ansible.builtin.blockinfile:
-    path: /etc/wazuh-indexer/opensearch.yml
-    marker: "# {mark} ANSIBLE MANAGED SEED HOSTS"
-    block: |-
-      discovery.seed_hosts:
-        - "{{ wazuh_indexer_network_host }}"
-  when: not (wazuh_indexer_single_node | bool)
-  notify: Riavvia wazuh-indexer
-
-- name: Configura network.host dell'Indexer sull'indirizzo privato
-  ansible.builtin.lineinfile:
-    path: /etc/wazuh-indexer/opensearch.yml
-    regexp: '^network\.host:'
-    line: 'network.host: "{{ wazuh_indexer_network_host }}"'
-  notify: Riavvia wazuh-indexer
+- name: Valida YAML dell'Indexer prima del restart
+  ansible.builtin.command:
+    cmd: python3 -c "import yaml; yaml.safe_load(open('/etc/wazuh-indexer/opensearch.yml'))"
+  changed_when: false
 
 - name: Crea la directory dell'override systemd dell'Indexer
   ansible.builtin.file:
@@ -204,6 +127,14 @@
     mode: "0644"
   notify: Riavvia wazuh-indexer
 
+- name: Assicura vm.max_map_count sufficiente
+  ansible.posix.sysctl:
+    name: vm.max_map_count
+    value: "262144"
+    sysctl_set: true
+    state: present
+    reload: true
+
 - name: Abilita e avvia wazuh-indexer con diagnostica
   block:
     - name: Avvia il servizio wazuh-indexer
@@ -215,9 +146,10 @@
 
     - name: Attendi che l'Indexer sia pronto sulla porta 9200
       ansible.builtin.wait_for:
-        host: "127.0.0.1"
+        host: "{{ wazuh_indexer_network_host }}"
         port: 9200
-        timeout: 600
+        timeout: 300
+        delay: 10
 
   rescue:
     - name: Leggi gli ultimi log dell'Indexer
@@ -254,6 +186,22 @@
     group: wazuh-indexer
     mode: "0600"
   when: not wazuh_security_marker.stat.exists
+
+- name: Verifica la salute dell'Indexer tramite certificato admin
+  ansible.builtin.uri:
+    url: "https://{{ wazuh_indexer_network_host }}:9200/_cluster/health"
+    method: GET
+    validate_certs: false
+    client_cert: /etc/wazuh-indexer/certs/admin.pem
+    client_key: /etc/wazuh-indexer/certs/admin-key.pem
+    ca_path: /etc/wazuh-indexer/certs/root-ca.pem
+    status_code: 200
+  register: wazuh_indexer_health
+  retries: 30
+  delay: 10
+  until:
+    - wazuh_indexer_health.status == 200
+    - wazuh_indexer_health.json.status in ['green', 'yellow']
 
 - name: Crea directory dei certificati del Manager
   ansible.builtin.file:

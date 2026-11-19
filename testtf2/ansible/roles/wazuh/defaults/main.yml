@@ -2,7 +2,11 @@
 # Heap dell'Indexer ridotto per ridurre la memoria richiesta sulle VM da 4 GB.
 wazuh_indexer_heap: "1g"
 
-# Modalità di discovery dell'Indexer.
+# Modalità single-node di default; l'IP viene rilevato dalla VM in Ansible.
 wazuh_indexer_single_node: true
 wazuh_indexer_node_name: "wazuh-indexer"
-wazuh_indexer_network_host: "{{ wazuh_manager_ip }}"
+wazuh_indexer_network_host: "{{ ansible_default_ipv4.address }}"
+
+# Le credenziali devono essere fornite da un vault o extra var; nessuna password nel repository.
+wazuh_indexer_admin_username: "admin"
+wazuh_indexer_admin_password: ""

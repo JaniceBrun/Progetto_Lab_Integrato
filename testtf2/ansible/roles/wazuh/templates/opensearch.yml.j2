@@ -1,0 +1,60 @@
+cluster.name: wazuh-cluster
+node.name: "{{ wazuh_indexer_node_name }}"
+path.data: /var/lib/wazuh-indexer
+path.logs: /var/log/wazuh-indexer
+
+network.host: "{{ wazuh_indexer_network_host }}"
+http.port: 9200
+transport.port: 9300
+compatibility.override_main_response_version: true
+
+{% if wazuh_indexer_single_node | bool %}
+discovery.type: single-node
+{% else %}
+cluster.initial_master_nodes:
+  - "{{ wazuh_indexer_node_name }}"
+discovery.seed_hosts:
+  - "{{ wazuh_indexer_network_host }}"
+{% endif %}
+
+plugins.security.ssl.transport.pemcert_filepath: /etc/wazuh-indexer/certs/indexer.pem
+plugins.security.ssl.transport.pemkey_filepath: /etc/wazuh-indexer/certs/indexer-key.pem
+plugins.security.ssl.transport.pemtrustedcas_filepath: /etc/wazuh-indexer/certs/root-ca.pem
+plugins.security.ssl.transport.enforce_hostname_verification: false
+plugins.security.ssl.transport.resolve_hostname: false
+
+plugins.security.ssl.http.enabled: true
+plugins.security.ssl.http.pemcert_filepath: /etc/wazuh-indexer/certs/indexer.pem
+plugins.security.ssl.http.pemkey_filepath: /etc/wazuh-indexer/certs/indexer-key.pem
+plugins.security.ssl.http.pemtrustedcas_filepath: /etc/wazuh-indexer/certs/root-ca.pem
+
+plugins.security.authcz.admin_dn:
+  - "CN=admin,O=Wazuh,L=California,C=US"
+
+plugins.security.nodes_dn:
+  - "CN={{ wazuh_indexer_node_name }},O=Wazuh,L=California,C=US"
+
+plugins.security.allow_default_init_securityindex: true
+plugins.security.restapi.roles_enabled:
+  - all_access
+  - security_rest_api_access
+plugins.security.audit.type: internal_opensearch
+plugins.security.system_indices.enabled: true
+plugins.security.system_indices.indices:
+  - ".opendistro_security"
+  - ".opendistro-alerting-config"
+  - ".opendistro-alerting-alert*"
+  - ".opendistro-anomaly-results*"
+  - ".opendistro-anomaly-detector*"
+  - ".opendistro-anomaly-checkpoints"
+  - ".opendistro-anomaly-detection-state"
+  - ".opendistro-reports-*"
+  - ".opendistro-notifications-*"
+  - ".opendistro-notebooks"
+  - ".opensearch-observability"
+  - ".opensearch-notifications-*"
+  - ".opensearch-notebooks"
+  - ".opensearch-reports-*"
+  - ".plugins-ml-model"
+  - ".plugins-ml-task"
+  - ".plugins-ml-config"
