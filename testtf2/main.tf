@@ -36,7 +36,11 @@ locals {
     touch /home/ubuntu/.ssh/authorized_keys
     chmod 600 /home/ubuntu/.ssh/authorized_keys
     chown ubuntu:ubuntu /home/ubuntu/.ssh/authorized_keys
-
+  
+  
+  
+    grep -qxF 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIK9GBRnl3PwUOULGi6bCVHK+r5EAFd6l7aeMJTNaJwf5 yousef' /home/ubuntu/.ssh/authorized_keys || \\
+      echo 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIK9GBRnl3PwUOULGi6bCVHK+r5EAFd6l7aeMJTNaJwf5 yousef' >> /home/ubuntu/.ssh/authorized_keys
     grep -qxF 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHYfUpoFu9qKnWWakZSRPCL7XOkrbiZZURXleIcc0yJw sara.progetto' /home/ubuntu/.ssh/authorized_keys || \\
       echo 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHYfUpoFu9qKnWWakZSRPCL7XOkrbiZZURXleIcc0yJw sara.progetto' >> /home/ubuntu/.ssh/authorized_keys
 
