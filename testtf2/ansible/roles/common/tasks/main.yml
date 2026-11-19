@@ -47,8 +47,10 @@
     state: present
     key: "{{ item }}"
   loop:
-    - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHYfUpoFu9qKnWWakZSRPCL7XOkrbiZZURXleIcc0yJw sara.progetto"
     - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIANI89MdEkKMcZYadmcCQ9YJEEAPXCb8+QjChd7d4GmP marco_progettolab"
+    - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHYfUpoFu9qKnWWakZSRPCL7XOkrbiZZURXleIcc0yJw sara.progetto"
+    - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIK9GBRnl3PwUOULGi6bCVHK+r5EAFd6l7aeMJTNaJwf5 yousef"
+    - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAToUD702j4+kKSr4PWyJh1IwdPbdY8ckyqqe/UXbj/e alessandro.tassone"
 
 - name: Imposta i permessi di authorized_keys
   file:
