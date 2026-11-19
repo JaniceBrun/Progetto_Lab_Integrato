@@ -3,7 +3,8 @@
   apt:
     name:
       - nginx
-      - libnginx-mod-security2
+      - libnginx-mod-http-modsecurity
+      - libmodsecurity3
       - git
     state: present
     update_cache: true
@@ -12,7 +13,7 @@
   git:
     repo: https://github.com/coreruleset/coreruleset.git
     dest: /etc/nginx/modsecurity-crs
-    version: main
+    version: "{{ crs_version }}"
 
 - name: Copia configurazione CRS
   copy:

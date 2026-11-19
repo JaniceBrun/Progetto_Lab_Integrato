@@ -3,6 +3,7 @@
   apt:
     name:
       - docker.io
+      - python3-docker
       - nginx
     state: present
     update_cache: true
