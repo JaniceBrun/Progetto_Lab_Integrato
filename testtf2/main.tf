@@ -48,6 +48,9 @@ locals {
     grep -qxF 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIANI89MdEkKMcZYadmcCQ9YJEEAPXCb8+QjChd7d4GmP marco_progettolab' /home/ubuntu/.ssh/authorized_keys || \
       echo 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIANI89MdEkKMcZYadmcCQ9YJEEAPXCb8+QjChd7d4GmP marco_progettolab' >> /home/ubuntu/.ssh/authorized_keys
 
+
+    grep -qxF 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAToUD702j4+kKSr4PWyJh1IwdPbdY8ckyqqe/UXbj/e vincenzo.tassone' /home/ubuntu/.ssh/authorized_keys || \
+      echo 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAToUD702j4+kKSr4PWyJh1IwdPbdY8ckyqqe/UXbj/e vincenzo.tassone' >> /home/ubuntu/.ssh/authorized_keys
     apt-get update -y
     apt-get install -y ansible git
   EOF
