@@ -40,9 +40,9 @@ cat > /usr/local/bin/ansible-pull-lab <<'RUNNER'
 #!/bin/bash
 set -uo pipefail
 
-WAZUH_MANAGER_IP='${ wazuh_manager_ip }'
-JUICESHOP_IP='${ juiceshop_ip }'
-if [ '${ playbook }' = 'wazuh.yml' ]; then
+WAZUH_MANAGER_IP='${wazuh_manager_ip}'
+JUICESHOP_IP='${juiceshop_ip}'
+if [ '${playbook}' = 'wazuh.yml' ]; then
   WAZUH_MANAGER_IP="$(hostname -I | awk '{print $1}')"
 fi
 
@@ -54,13 +54,13 @@ if [ -f "$WAZUH_VAULT_PASSWORD_FILE" ]; then
 fi
 
 exec flock -n /var/lock/ansible-pull-lab.lock /usr/bin/ansible-pull \
-  "${VAULT_ARGS[@]}" \
-  -U '${ repo_url }' \
-  -C '${ repo_branch }' \
+  "$${VAULT_ARGS[@]}" \
+  -U '${repo_url}' \
+  -C '${repo_branch}' \
   -d /opt/ansible-pull \
   -i localhost, \
   -c local \
-  testtf2/ansible/${ playbook } \
+  testtf2/ansible/${playbook} \
   -e "wazuh_manager_ip=$WAZUH_MANAGER_IP" \
   -e "juiceshop_ip=$JUICESHOP_IP" \
   -e "wazuh_version=$WAZUH_VERSION" \
