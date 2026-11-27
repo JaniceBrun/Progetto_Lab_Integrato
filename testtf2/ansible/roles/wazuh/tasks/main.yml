@@ -40,6 +40,53 @@
   register: wazuh_certs_generation
   changed_when: wazuh_certs_generation.rc == 0
 
+- name: Verifica chiave privata della CA Wazuh
+  ansible.builtin.stat:
+    path: /opt/wazuh-certs/wazuh-certificates/root-ca.key
+  register: wazuh_root_ca_key
+
+- name: Segnala assenza della chiave privata CA
+  ansible.builtin.assert:
+    that:
+      - wazuh_root_ca_key.stat.exists
+    fail_msg: "Impossibile generare il certificato Filebeat: root-ca.key non esiste nella directory dei certificati Wazuh."
+
+- name: Crea configurazione X509 del certificato Filebeat
+  ansible.builtin.copy:
+    dest: /opt/wazuh-certs/filebeat-ext.cnf
+    mode: "0600"
+    content: |
+      [v3_req]
+      basicConstraints = CA:FALSE
+      keyUsage = critical, digitalSignature, keyEncipherment
+      extendedKeyUsage = clientAuth
+      subjectAltName = DNS:filebeat
+
+- name: Genera chiave privata e CSR Filebeat
+  ansible.builtin.shell:
+    cmd: |
+      set -e
+      openssl genrsa -out /opt/wazuh-certs/wazuh-certificates/filebeat-key.pem 2048
+      openssl req -new -key /opt/wazuh-certs/wazuh-certificates/filebeat-key.pem \
+        -out /opt/wazuh-certs/wazuh-certificates/filebeat.csr \
+        -subj '/CN=filebeat/OU=Wazuh/O=Wazuh/L=California/C=US'
+    creates: /opt/wazuh-certs/wazuh-certificates/filebeat.csr
+
+- name: Firma il certificato client Filebeat con la CA Wazuh
+  ansible.builtin.command:
+    cmd: >-
+      openssl x509 -req
+      -in /opt/wazuh-certs/wazuh-certificates/filebeat.csr
+      -CA /opt/wazuh-certs/wazuh-certificates/root-ca.pem
+      -CAkey /opt/wazuh-certs/wazuh-certificates/root-ca.key
+      -CAcreateserial
+      -out /opt/wazuh-certs/wazuh-certificates/filebeat.pem
+      -days 3650
+      -sha256
+      -extfile /opt/wazuh-certs/filebeat-ext.cnf
+      -extensions v3_req
+    creates: /opt/wazuh-certs/wazuh-certificates/filebeat.pem
+
 - name: Installa pacchetti Wazuh con versione fissata
   ansible.builtin.apt:
     name:
@@ -336,3 +383,167 @@
     regexp: '^-Xmx'
     line: "-Xmx{{ wazuh_indexer_heap }}"
   notify: Riavvia wazuh-indexer
+
+- name: Installa Filebeat
+  ansible.builtin.apt:
+    name: filebeat
+    state: present
+
+- name: Scarica configurazione ufficiale Filebeat Wazuh
+  ansible.builtin.get_url:
+    url: https://packages.wazuh.com/4.14/tpl/wazuh/filebeat/filebeat.yml
+    dest: /etc/filebeat/filebeat.yml
+    mode: "0640"
+
+- name: Configura endpoint dell'Indexer tramite variabile Ansible
+  ansible.builtin.lineinfile:
+    path: /etc/filebeat/filebeat.yml
+    regexp: '^\s*hosts:\s*.*'
+    line: '  hosts: ["{{ wazuh_manager_ip }}:9200"]'
+  notify: Riavvia filebeat
+
+- name: Scarica template Wazuh per Filebeat
+  ansible.builtin.get_url:
+    url: "https://raw.githubusercontent.com/wazuh/wazuh/v{{ wazuh_version | regex_replace('-.*$', '') }}/extensions/elasticsearch/7.x/wazuh-template.json"
+    dest: /etc/filebeat/wazuh-template.json
+    mode: "0644"
+
+- name: Crea directory dei certificati client Filebeat
+  ansible.builtin.file:
+    path: /etc/filebeat/certs
+    state: directory
+    owner: root
+    group: root
+    mode: "0500"
+
+- name: Distribuisci certificato client dedicato Filebeat
+  ansible.builtin.copy:
+    src: "/opt/wazuh-certs/wazuh-certificates/{{ item.src }}"
+    dest: "/etc/filebeat/certs/{{ item.dest }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0400"
+  loop:
+    - { src: 'filebeat.pem', dest: 'filebeat.pem' }
+    - { src: 'filebeat-key.pem', dest: 'filebeat-key.pem' }
+    - { src: 'root-ca.pem', dest: 'root-ca.pem' }
+  notify: Riavvia filebeat
+
+- name: Verifica subject del certificato Filebeat
+  ansible.builtin.command:
+    cmd: openssl x509 -in /etc/filebeat/certs/filebeat.pem -noout -subject -issuer
+  changed_when: false
+
+- name: Configura certificati mutual TLS di Filebeat
+  ansible.builtin.lineinfile:
+    path: /etc/filebeat/filebeat.yml
+    regexp: '^\s*ssl\.{{ item.key }}:\s*.*'
+    line: '  ssl.{{ item.key }}: {{ item.value }}'
+  loop:
+    - { key: 'certificate_authorities', value: '["/etc/filebeat/certs/root-ca.pem"]' }
+    - { key: 'certificate', value: '"/etc/filebeat/certs/filebeat.pem"' }
+    - { key: 'key', value: '"/etc/filebeat/certs/filebeat-key.pem"' }
+  notify: Riavvia filebeat
+
+- name: Crea file swap da 2 GB per Wazuh all-in-one
+  ansible.builtin.command:
+    cmd: fallocate -l 2G /swapfile
+  args:
+    creates: /swapfile
+
+- name: Imposta permessi del file swap
+  ansible.builtin.file:
+    path: /swapfile
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Inizializza il file swap
+  ansible.builtin.command:
+    cmd: mkswap /swapfile
+  register: wazuh_mkswap
+  changed_when: wazuh_mkswap.rc == 0
+  when: not ansible_facts.swaptotal_mb | default(0) > 0
+
+- name: Attiva il file swap
+  ansible.builtin.command:
+    cmd: swapon /swapfile
+  register: wazuh_swapon
+  changed_when: wazuh_swapon.rc == 0
+  failed_when: false
+  when: not ansible_facts.swaptotal_mb | default(0) > 0
+
+- name: Registra il file swap in fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    regexp: '^/swapfile\s+'
+    line: '/swapfile none swap sw 0 0'
+
+- name: Imposta vm.swappiness
+  ansible.posix.sysctl:
+    name: vm.swappiness
+    value: "10"
+    sysctl_set: true
+    state: present
+    reload: true
+
+- name: Verifica se il keystore Filebeat esiste
+  ansible.builtin.stat:
+    path: /etc/filebeat/filebeat.keystore
+  register: wazuh_filebeat_keystore
+
+- name: Crea keystore Filebeat
+  ansible.builtin.command:
+    cmd: filebeat keystore create
+  when: not wazuh_filebeat_keystore.stat.exists
+
+- name: Imposta username nel keystore Filebeat
+  ansible.builtin.shell:
+    cmd: "printf '%s' '{{ wazuh_indexer_admin_username }}' | filebeat keystore add username --stdin --force"
+  changed_when: true
+  no_log: true
+
+- name: Imposta password nel keystore Filebeat
+  ansible.builtin.shell:
+    cmd: "printf '%s' '{{ wazuh_indexer_admin_password }}' | filebeat keystore add password --stdin --force"
+  changed_when: true
+  no_log: true
+  when: wazuh_indexer_admin_password | length > 0
+
+- name: Scarica modulo ufficiale Wazuh per Filebeat
+  ansible.builtin.unarchive:
+    src: "https://packages.wazuh.com/4.x/filebeat/wazuh-filebeat-0.4.tar.gz"
+    dest: /usr/share/filebeat/module
+    remote_src: true
+    creates: /usr/share/filebeat/module/wazuh
+
+- name: Verifica blocco persistente di creazione indici
+  ansible.builtin.uri:
+    url: "https://{{ wazuh_indexer_network_host }}:9200/_cluster/settings?include_defaults=true"
+    method: GET
+    validate_certs: false
+    client_cert: /etc/wazuh-indexer/certs/admin.pem
+    client_key: /etc/wazuh-indexer/certs/admin-key.pem
+    ca_path: /etc/wazuh-indexer/certs/root-ca.pem
+    status_code: 200
+  register: wazuh_cluster_settings
+
+- name: Rimuovi blocco persistente se presente
+  ansible.builtin.uri:
+    url: "https://{{ wazuh_indexer_network_host }}:9200/_cluster/settings"
+    method: PUT
+    validate_certs: false
+    client_cert: /etc/wazuh-indexer/certs/admin.pem
+    client_key: /etc/wazuh-indexer/certs/admin-key.pem
+    ca_path: /etc/wazuh-indexer/certs/root-ca.pem
+    headers:
+      Content-Type: application/json
+    body_format: json
+    body:
+      persistent:
+        cluster.blocks.create_index: null
+    status_code: 200
+  when:
+    - wazuh_cluster_settings.json.persistent is defined
+    - wazuh_cluster_settings.json.persistent['cluster.blocks.create_index'] | default(false) | string | lower == 'true'

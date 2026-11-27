@@ -18,3 +18,9 @@ backend.hcl
 # Generati automaticamente da terraform apply
 testtf2/ansible/inventory/hosts.ini
 testtf2/ansible/group_vars/all.yml
+
+# Password master Ansible Vault: mai da includere nel repository
+testtf2/ansible/.vault-password
+testtf2/ansible/*vault-password*
+**/vault-password.txt
+**/.vault_pass

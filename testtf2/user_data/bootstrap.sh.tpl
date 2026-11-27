@@ -47,8 +47,14 @@ if [ '${ playbook }' = 'wazuh.yml' ]; then
 fi
 
 WAZUH_VERSION='4.14.10-1'
+WAZUH_VAULT_PASSWORD_FILE='/etc/wazuh/ansible-vault-password'
+VAULT_ARGS=()
+if [ -f "$WAZUH_VAULT_PASSWORD_FILE" ]; then
+  VAULT_ARGS=(--vault-password-file "$WAZUH_VAULT_PASSWORD_FILE")
+fi
 
 exec flock -n /var/lock/ansible-pull-lab.lock /usr/bin/ansible-pull \
+  "${VAULT_ARGS[@]}" \
   -U '${ repo_url }' \
   -C '${ repo_branch }' \
   -d /opt/ansible-pull \
@@ -93,3 +99,6 @@ systemctl enable --now ansible-pull-lab.timer
 
 # Primo tentativo immediato: il timer riproverà anche dopo un errore.
 /usr/local/bin/ansible-pull-lab || true
+
+mkdir -p /etc/wazuh
+chmod 0700 /etc/wazuh

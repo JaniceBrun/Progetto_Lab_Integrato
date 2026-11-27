@@ -48,6 +48,7 @@ locals {
 
     grep -qxF 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAToUD702j4+kKSr4PWyJh1IwdPbdY8ckyqqe/UXbj/e alessandro.tassone' /home/ubuntu/.ssh/authorized_keys || \
       echo 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAToUD702j4+kKSr4PWyJh1IwdPbdY8ckyqqe/UXbj/e alessandro.tassone' >> /home/ubuntu/.ssh/authorized_keys
+
     apt-get update -y
     apt-get install -y ansible git
   EOF

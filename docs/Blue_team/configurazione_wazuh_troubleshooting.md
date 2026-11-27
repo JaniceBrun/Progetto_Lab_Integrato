@@ -33,7 +33,7 @@ sudo journalctl -u wazuh-indexer -u wazuh-manager -u wazuh-dashboard --no-pager 
 ---
 
 ## 1. Ispezione certificati e stato Indexer
-
+(fixed 27/11/26)
 ```bash
 sudo ls -l /opt/wazuh-certs/wazuh-certificates/ /etc/wazuh-indexer/certs/
 sudo cat /opt/wazuh-certs/config.yml
@@ -72,6 +72,7 @@ Necessario perché con ~3.8 GB di RAM e Indexer (heap `-Xms1g -Xmx1g`) + Manager
 ---
 
 ## 3. Fix del Distinguished Name nei certificati OpenSearch
+Fixed
 
 ```bash
 sudo cp -a /etc/wazuh-indexer/opensearch.yml /etc/wazuh-indexer/opensearch.yml.bak
@@ -357,3 +358,236 @@ curl -k -I https://localhost:443
   3. Ripristinare il mutual TLS per Filebeat con certificati client propri.
   4. Configurare la raccolta dei log/audit ModSecurity dall'agente WAF (`SecAuditLog` + `<localfile>` su `agent.conf`/manager) per completare l'integrazione WAF → SIEM.
   5. Portare la VM Wazuh a 4 vCPU/8 GB RAM come da documentazione ufficiale, non appena disponibile su AWS.
+
+---
+
+## Nota tecnica aggiunta il 27 novembre 2026 — mismatch `OU=Wazuh` nei DN
+
+### Verifica della causa
+
+L'esito `Unauthorized` nella prima chiamata a `GET /_cluster/health` era legato alla gestione dei certificati da parte di Ansible:
+
+- il ruolo `testtf2/ansible/roles/wazuh` genera i certificati tramite `wazuh-certs-tool.sh -A` usando `testtf2/ansible/roles/wazuh/templates/config.yml.j2`;
+- il certificato generato contiene un subject con la struttura `CN=admin,OU=Wazuh,O=Wazuh,L=California,C=US` per l'amministratore e `CN=wazuh-indexer,OU=Wazuh,O=Wazuh,L=California,C=US` per il nodo;
+- il template `testtf2/ansible/roles/wazuh/templates/opensearch.yml.j2` dichiarava invece i DN senza `OU=Wazuh`:
+  - `CN=admin,O=Wazuh,L=California,C=US`;
+  - `CN=wazuh-indexer,O=Wazuh,L=California,C=US`.
+
+Questa differenza era un **mismatch reale del Distinguished Name** e non poteva essere risolta dall'autenticazione HTTP o dalle sole credenziali: i due certificati devono essere riconosciuti dalle liste OpenSearch Security usando lo stesso DN presente nei certificati.
+
+### Correzione applicata
+
+Il template Ansible di `opensearch.yml` è stato corretto aggiungendo `OU=Wazuh` sia in `plugins.security.authcz.admin_dn` sia in `plugins.security.nodes_dn`:
+
+```yaml
+plugins.security.authcz.admin_dn:
+  - "CN=admin,OU=Wazuh,O=Wazuh,L=California,C=US"
+
+plugins.security.nodes_dn:
+  - "CN=wazuh-indexer,OU=Wazuh,O=Wazuh,L=California,C=US"
+```
+
+Dalla configurazione appena applicata, Ansible ricrea il file completo dell'Indexer e quindi evita i patch manuali che avevano causato in precedenti interventi elementi DN incompleti o valori duplicati.
+
+### Verifiche sul server dopo il deploy
+
+```bash
+sudo openssl x509 -in /etc/wazuh-indexer/certs/admin.pem -noout -subject -nameopt RFC2253
+sudo openssl x509 -in /etc/wazuh-indexer/certs/indexer.pem -noout -subject -nameopt RFC2253
+sudo grep -nE 'admin_dn|nodes_dn|OU=Wazuh|CN=' /etc/wazuh-indexer/opensearch.yml
+sudo python3 -c "import yaml; yaml.safe_load(open('/etc/wazuh-indexer/opensearch.yml')); print('YAML OK')"
+sudo systemctl restart wazuh-indexer
+sudo /usr/share/wazuh-indexer/bin/indexer-security-init.sh
+sudo curl -sS --fail --cacert /etc/wazuh-indexer/certs/root-ca.pem \
+  --cert /etc/wazuh-indexer/certs/admin.pem \
+  --key /etc/wazuh-indexer/certs/admin-key.pem \
+  'https://127.0.0.1:9200/_cluster/health?pretty'
+```
+
+Il valore atteso per i subject è rispettivamente `CN=admin,OU=Wazuh,O=Wazuh,L=California,C=US` e `CN=wazuh-indexer,OU=Wazuh,O=Wazuh,L=California,C=US`; `OU=Wazuh` deve comparire identicamente nelle relative liste `admin_dn`/`nodes_dn`. Il risultato atteso della health API è HTTP 200 con stato `green` o `yellow` su un singolo nodo.
+
+---
+
+## Nota tecnica aggiunta il 27 novembre 2026 — IP dell'Indexer in Filebeat
+
+### Problema osservato
+
+Durante il secondo setup manuale Marco ha copiato il comando usato sulla prima VM. Il comando sostituiva l'endpoint con `10.0.2.21:9200`, cioè con l'IP privato della VM precedente, anziché usare `10.0.2.134:9200`, IP della nuova VM. La differenza era invisibile perché il comando non derivava dinamicamente il nuovo indirizzo dall'ambiente.
+
+### Soluzione automatizzata
+
+È possibile eliminare il problema con una variabile Ansible già disponibile nel progetto:
+
+```yaml
+hosts: ["{{ wazuh_manager_ip }}:9200"]
+```
+
+`wazuh_manager_ip` viene trattato diversamente in base al tipo di VM:
+
+- sulla VM Wazuh il bootstrap rileva l'IP privato locale con `hostname -I | awk '{print $1}'`;
+- sulle VM agente WAF/Juice Shop l'IP viene passato da Terraform o dal runner Ansible.
+
+Il ruolo Wazuh ora configura quindi `/etc/filebeat/filebeat.yml` senza usare indirizzi fissi e installa anche i certificati client in `/etc/filebeat/certs/`, ripristinando il mutual TLS anziché disabilitarlo manualmente.
+
+### Verifica dopo il prossimo deploy
+
+```bash
+sudo grep -nE 'hosts:|ssl\.certificate|ssl\.key|ssl\.certificate_authorities' /etc/filebeat/filebeat.yml
+sudo filebeat test config -c /etc/filebeat/filebeat.yml
+sudo filebeat test output -c /etc/filebeat/filebeat.yml
+sudo systemctl status filebeat --no-pager -l
+```
+
+Il valore `hosts:` deve contenere l'IP privato effettivo della VM Wazuh corrente. Il test dell'output deve confermare la raggiungibilità HTTPS e la configurazione dei certificati TLS.
+
+---
+
+## Nota tecnica aggiunta il 27 novembre 2026 — generazione certificato client dedicato Filebeat
+
+### Correzione verificata nel ruolo Ansible
+
+Il problema dei certificati Filebeat mancanti non è stato affrontato mediante una copia successiva del certificato del Manager. Il ruolo Wazuh ora genera una identità client distinta, denominata `filebeat`, firmata dalla CA generata da `wazuh-certs-tool.sh -A`.
+
+Dopo la generazione dei certificati standard Wazuh, Ansible:
+
+1. verifica `/opt/wazuh-certs/wazuh-certificates/root-ca.key`;
+2. crea `/opt/wazuh-certs/filebeat-ext.cnf` con estensioni `clientAuth`;
+3. genera la chiave privata `filebeat-key.pem`;
+4. genera il CSR con subject `CN=filebeat,OU=Wazuh,O=Wazuh,L=California,C=US`;
+5. firma `filebeat.pem` con `root-ca.pem` e `root-ca.key`;
+6. distribuisce certificato, chiave e CA in `/etc/filebeat/certs/`;
+7. configura i parametri TLS nel file `/etc/filebeat/filebeat.yml`.
+
+Nessun certificato o passaggio manuale è necessario al primo deployment. La procedura resta idempotente grazie ai marker `creates` dei file OpenSSL e al comportamento di convergenza di Ansible.
+
+### Verifiche sul server dopo il deploy
+
+```bash
+sudo openssl x509 -in /etc/filebeat/certs/filebeat.pem -noout -subject -issuer -dates
+sudo openssl verify -CAfile /etc/filebeat/certs/root-ca.pem /etc/filebeat/certs/filebeat.pem
+sudo ls -l /etc/filebeat/certs
+sudo grep -nE 'ssl\.certificate_authorities|ssl\.certificate|ssl\.key' /etc/filebeat/filebeat.yml
+sudo filebeat test config -c /etc/filebeat/filebeat.yml
+sudo filebeat test output -c /etc/filebeat/filebeat.yml
+```
+
+Risultato atteso:
+
+- `subject` contiene `CN=filebeat,OU=Wazuh,O=Wazuh,L=California,C=US`;
+- `issuer` coincide con la CA Wazuh;
+- la verifica OpenSSL restituisce `OK`;
+- `filebeat.pem` e `filebeat-key.pem` esistono con permessi restrittivi;
+- `filebeat test output` conferma la connessione HTTPS mutual TLS.
+
+---
+
+## Nota tecnica aggiunta il 27 novembre 2026 — confronto con la seconda sessione manuale di Marco
+
+### Criterio di analisi
+
+Sono stati confrontati i comandi eseguiti sulla VM `10.0.2.134` del 19/11/2026 con il ruolo `testtf2/ansible/roles/wazuh` e con i role comuni/agent. I passaggi manuali validi sono automatizzati; i passaggi errati o temporanei vengono conservati come cronaca e non devono essere ripetuti in futuro.
+
+### Passaggi già automatizzati o corretti da fix precedenti
+
+| Passaggio manuale | Stato Ansible attuale |
+|---|---|
+| Swap, fstab e `vm.swappiness=10` | Automatizzati nel ruolo Wazuh con swap 2 GB. |
+| Fix manuale `CN=admin,OU=Wazuh` e `CN=wazuh-indexer,OU=Wazuh` | Template OpenSearch già corretto: il fix manuale va ignorato. |
+| `indexer-security-init.sh` | Eseguito una sola volta mediante marker `/var/lib/wazuh-indexer/.ansible_security_initialized`. |
+| Avvio Wazuh Manager | Gestito da `systemd_service`, dopo health check dell'Indexer. |
+| Installazione Filebeat | Gestita dal ruolo Wazuh tramite `apt`. |
+| IP Filebeat | Configurato tramite `wazuh_manager_ip`, rilevato o passato dall'infrastruttura. |
+| Template indici Wazuh per Filebeat | Scaricato dal repository ufficiale nella versione selezionata. |
+| Modulo Wazuh Filebeat | Scaricato automaticamente in `/usr/share/filebeat/module`. |
+| Certificati Filebeat | Certificato dedicato firmato dalla CA Wazuh e copiato in `/etc/filebeat/certs/`. |
+| Mutual TLS | Configurato automaticamente nel file Filebeat. |
+| Certificati Dashboard | Copiati con nomi attesi e permessi corretti dal ruolo. |
+| Endpoint Dashboard verso l'Indexer | Configurato con `wazuh_manager_ip` tramite Ansible. |
+| Avvio Dashboard | Gestito da `systemd_service`. |
+| Heap e vm.max_map_count | Già gestiti dal ruolo. |
+| Log Nginx e ModSecurity dell'agente WAF | Già configurati da `roles/wazuh_agent/tasks/main.yml`. |
+| ModSecurity su VM WAF | Già installato e configurato dal ruolo WAF. |
+
+### Nuovi passaggi automatizzati dalla sessione manuale
+
+Il ruolo Wazuh include ora:
+
+- creazione, inizializzazione e attivazione di `/swapfile`;
+- registrazione di `/swapfile` in `/etc/fstab`;
+- impostazione persistente di `vm.swappiness=10`;
+- creazione del keystore Filebeat;
+- configurazione delle chiavi `username` e `password` nel keystore, se la password è fornita;
+- installazione del modulo Wazuh per Filebeat;
+- verifica del blocco persistente `cluster.blocks.create_index`;
+- rimozione automatica controllata del blocco solo se risulta effettivamente impostato a `true`.
+
+Questi task completano il deployment senza cambiare i fix già applicati per DN, certificati dedicati e endpoint dinamico.
+
+### Comandi manuali errati da ignorare
+
+I seguenti passaggi fanno parte della cronaca della seconda sessione, ma **non devono essere riutilizzati come procedura**:
+
+1. `sed` manuale sui DN di `opensearch.yml`, sostituito dal template Ansible corretto.
+2. `sed` con `10.0.2.21:9200`, sostituito da `wazuh_manager_ip`.
+3. Copia di `filebeat.pem` e `filebeat-key.pem` da `/etc/wazuh-indexer/certs/`, un path dove quei file non esistono.
+4. Tentativo di `chmod 400` su un glob vuoto.
+5. Rimozione manuale di `ssl.certificate` e `ssl.key`, sostituita dalla configurazione mutual TLS automatica.
+6. Copia manuale dei certificati Dashboard, sostituita dal ruolo Wazuh.
+7. `sed` manuale dell'endpoint Dashboard a `10.0.2.134:9200`, sostituito da `wazuh_manager_ip`.
+8. Rimozione manuale del blocco `cluster.blocks.create_index`, ora verificata e rimossa solo dal role in modo condizionale.
+
+### Comandi di diagnosi ancora utili
+
+Le operazioni seguenti sono diagnostiche e possono essere mantenute al termine del deploy:
+
+```bash
+sudo swapon --show
+free -h
+sudo filebeat test config -c /etc/filebeat/filebeat.yml
+sudo filebeat test output -c /etc/filebeat/filebeat.yml
+sudo openssl x509 -in /etc/filebeat/certs/filebeat.pem -noout -subject -issuer
+sudo systemctl status wazuh-indexer wazuh-manager wazuh-dashboard filebeat --no-pager
+sudo /var/ossec/bin/wazuh-control status
+sudo /var/ossec/bin/agent_control -l
+sudo curl -sS --cacert /etc/wazuh-indexer/certs/root-ca.pem \
+  --cert /etc/wazuh-indexer/certs/admin.pem \
+  --key /etc/wazuh-indexer/certs/admin-key.pem \
+  'https://127.0.0.1:9200/_cluster/health?pretty'
+```
+
+### Stato atteso al prossimo deploy
+
+Al bootstrap completo, Ansible deve aver configurato senza intervento manuale:
+
+- Swap e heap dell'Indexer;
+- DN dei certificati coerenti;
+- Indexer, Manager e Dashboard avviati;
+- sicurezza dell'Indexer inizializzata una volta;
+- certificato dedicato, CA e mutual TLS di Filebeat;
+- endpoint Filebeat e Dashboard dipendenti dall'IP corrente;
+- modulo e template Wazuh di Filebeat;
+- certificati Dashboard già presenti;
+- registro ModSecurity/Nginx già configurato sull'agente WAF;
+- blocco persistente degli indici verificato e rimosso solo se necessario.
+
+---
+
+## Nota tecnica aggiunta il 27 novembre 2026 — password amministratore in Ansible Vault
+
+La password amministratore richiesta dal laboratorio è memorizzata cifrata nel file:
+
+```text
+testtf2/ansible/group_vars/vault.yml
+```
+
+Il file contiene una variabile Ansible cifrata `wazuh_indexer_admin_password` e non può essere letto in chiaro senza la password master Vault. Il master password non è stato inserito nei template Terraform, nei playbook né nei file Markdown.
+
+Il runner Ansible usa automaticamente:
+
+```bash
+--vault-password-file /etc/wazuh/ansible-vault-password
+```
+
+quando il file master esiste sulla VM con permessi `0600`. Tale file deve essere creato manualmente una sola volta oppure distribuito attraverso un sistema di secrets esterno.
+
+Il `.gitignore` protegge i file master locali da commit accidentali. La password deve essere modificata anche nel backend OpenSearch/Wazuh, non soltanto nel vault: il vault permette ad Ansible/Filebeat di utilizzare la password, ma non sostituisce il cambio della password dell'account `admin` nel sistema Wazuh.

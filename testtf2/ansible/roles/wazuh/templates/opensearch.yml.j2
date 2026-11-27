@@ -29,10 +29,10 @@ plugins.security.ssl.http.pemkey_filepath: /etc/wazuh-indexer/certs/indexer-key.
 plugins.security.ssl.http.pemtrustedcas_filepath: /etc/wazuh-indexer/certs/root-ca.pem
 
 plugins.security.authcz.admin_dn:
-  - "CN=admin,O=Wazuh,L=California,C=US"
+  - "CN=admin,OU=Wazuh,O=Wazuh,L=California,C=US"
 
 plugins.security.nodes_dn:
-  - "CN={{ wazuh_indexer_node_name }},O=Wazuh,L=California,C=US"
+  - "CN={{ wazuh_indexer_node_name }},OU=Wazuh,O=Wazuh,L=California,C=US"
 
 plugins.security.allow_default_init_securityindex: true
 plugins.security.restapi.roles_enabled:
